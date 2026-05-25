@@ -1,0 +1,487 @@
+-- ============================================================================
+-- DATA DICTIONARY: AIRCO_EDW_UAT.ILINKAICHAT
+-- Generated: 2026-04-22
+-- Description: Schema containing 13 views supporting employee, workforce,
+--              contract hierarchy, and daily work details analytics.
+-- ============================================================================
+
+-- ============================================================================
+-- 1. DIMENSION VIEWS - Employee Attributes
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 1.1 DIMHISTORYEMPLOYEE_V (32 columns)
+-- Purpose: Core employee dimension with full profile, employment details,
+--          work location, manager info, and termination data. Note: This table is history type 2 table
+--          This is the primary employee reference view.
+-- Join Keys: EMPLOYEE_ID, COSTCENTER, DEPARTMENTCODE, LOCATIONCODE,
+--            JOBTYPECODE, COMPANYCODE, DIVISIONCODE, STATIONCODE,
+--            CUSTOMERCODE, SERVICETYPECODE, EMPLOYMENTSTATUSCODE,
+--            EMPLOYMENTTYPECODE, EMPLOYEETYPECODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYEE_ID              | VARCHAR(20)        | NO       | Unique employee identifier
+-- FIRSTNAME                | VARCHAR(50)        | YES      | Employee first name
+-- LASTNAME                 | VARCHAR(50)        | YES      | Employee last name
+-- FULLNAME                 | VARCHAR(100)       | YES      | Concatenated full name
+-- MIDDLENAME               | VARCHAR(50)        | YES      | Middle name
+-- NAMESUFFIX               | VARCHAR(50)        | YES      | Name suffix (Jr, Sr, etc.)
+-- PREFERREDNAME            | VARCHAR(50)        | YES      | Preferred/display name
+-- HIREDATE                 | DATE               | YES      | Original hire date
+-- EMPLOYMENTSTATUSCODE     | VARCHAR(10)        | NO       | Status code (A/T/L/S)
+-- EMPLOYMENTTYPECODE       | VARCHAR(10)        | NO       | Employment type code (FT/PT)
+-- EMPLOYEETYPECODE         | VARCHAR(10)        | NO       | Employee type code
+-- PAYGROUPCODE             | VARCHAR(30)        | NO       | Pay group code
+-- PAYCLASSCODE             | VARCHAR(10)        | NO       | Pay class code
+-- COSTCENTER               | VARCHAR(10)        | NO       | Cost center code
+-- DEPARTMENTCODE           | VARCHAR(10)        | NO       | Department code
+-- LOCATIONCODE             | VARCHAR(10)        | NO       | Location code
+-- JOBTYPECODE              | VARCHAR(10)        | NO       | Job type code
+-- WORKCOUNTRYCODE          | VARCHAR(10)        | YES      | Work country code
+-- WORKPHONENUMBER          | VARCHAR(25)        | YES      | Work phone number
+-- WORKEMAIL                | VARCHAR(100)       | YES      | Work email address
+-- WORKPOSTALCODE           | VARCHAR(20)        | YES      | Work postal/zip code
+-- WORKCITY                 | VARCHAR(25)        | YES      | Work city
+-- WORKSTATE                | VARCHAR(25)        | YES      | Work state
+-- MANAGERID                | VARCHAR(20)        | YES      | Manager employee ID
+-- MANAGEREMAIL             | VARCHAR(100)       | YES      | Manager email address
+-- COMPANYCODE              | VARCHAR(10)        | NO       | Company code
+-- DIVISIONCODE             | VARCHAR(10)        | NO       | Division code
+-- STATIONCODE              | VARCHAR(10)        | NO       | Station/site code
+-- CUSTOMERCODE             | VARCHAR(10)        | YES      | Customer code
+-- SERVICETYPECODE          | VARCHAR(20)        | NO       | Service type code
+-- TERMINATIONDATE          | DATE               | YES      | Termination date (NULL=active)
+-- TERMTYPEREASONCODE       | VARCHAR(10)        | YES      | Termination reason code
+-- HISTORYEMPLOYEE_EFFECTIVEFROMDATE | Date      | Yes      | 
+-- HISTORYEMPLOYEE_EFFECTIVETODATE   | Date      | Yes.     |
+
+-- ---------------------------------------------------------------------------
+-- 1.2 DIMEMPLOYEETYPE_V (2 columns)
+-- Purpose: Lookup for employee type codes (e.g., Employee, Supervisor).
+-- Join Key: EMPLOYEETYPE_CODE -> DIMHISTORYEMPLOYEE_V.EMPLOYEETYPECODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYEETYPE_CODE        | VARCHAR(10)        | YES      | Employee type code
+-- EMPLOYEETYPE_NAME        | VARCHAR(50)        | YES      | Employee type description
+
+-- ---------------------------------------------------------------------------
+-- 1.3 DIMEMPLOYMENTSTATUS_V (2 columns)
+-- Purpose: Lookup for employment status codes (A=Active, T=Terminated, etc.).
+-- Join Key: EMPLOYMENTSTATUS_CODE -> DIMHISTORYEMPLOYEE_V.EMPLOYMENTSTATUSCODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYMENTSTATUS_CODE    | VARCHAR(5)         | YES      | Employment status code
+-- EMPLOYMENTSTATUS_NAME    | VARCHAR(10)        | YES      | Status description
+
+-- ---------------------------------------------------------------------------
+-- 1.4 DIMEMPLOYMENTSTATUS_HR_V (2 columns)
+-- Purpose: HR-specific employment status lookup (may include additional
+--          HR-only statuses vs. the general status view).
+-- Join Key: EMPLOYMENTSTATUS_CODE -> DIMHISTORYEMPLOYEE_V.EMPLOYMENTSTATUSCODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYMENTSTATUS_CODE    | VARCHAR(5)         | YES      | Employment status code
+-- EMPLOYMENTSTATUS_NAME    | VARCHAR(10)        | YES      | HR status description
+
+-- ---------------------------------------------------------------------------
+-- 1.5 DIMEMPLOYMENTTYPE_V (2 columns)
+-- Purpose: Lookup for employment type codes (Full-Time, Part-Time, etc.).
+-- Join Key: EMPLOYMENTTYPE_CODE -> DIMHISTORYEMPLOYEE_V.EMPLOYMENTTYPECODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYMENTTYPE_CODE      | VARCHAR(10)        | YES      | Employment type code
+-- EMPLOYMENTTYPE_NAME      | VARCHAR(50)        | YES      | Employment type description
+
+-- ---------------------------------------------------------------------------
+-- 1.6 DIMJOBTYPE_V (5 columns)
+-- Purpose: Job type/role classification including family and workers comp.
+-- Join Key: JOBTYPE_CODE -> DIMHISTORYEMPLOYEE_V.JOBTYPECODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- JOBTYPE_CODE             | VARCHAR(50)        | NO       | Job type code
+-- JOBTYPE_FAMILY           | VARCHAR(25)        | YES      | Job family grouping
+-- JOBTYPE_DESCRIPTION      | VARCHAR(100)       | NO       | Job type description
+-- JOBTYPE_STATUS           | VARCHAR(1)         | YES      | Active/Inactive status
+-- JOBTYPE_WORKERSCOMPCODE  | VARCHAR(5)         | YES      | Workers compensation code
+
+-- ---------------------------------------------------------------------------
+-- 1.7 DIMSERVICETYPE_V (4 columns)
+-- Purpose: Service type classification for work/contract categorization.
+-- Join Key: SERVICETYPE_CODE -> DIMHISTORYEMPLOYEE_V.SERVICETYPECODE
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- SERVICETYPE_CODE         | VARCHAR(10)        | NO       | Service type code
+-- SERVICETYPE_NAME         | VARCHAR(50)        | NO       | Service type description
+-- SERVICETYPE_GLSEGMENT    | VARCHAR(50)        | YES      | GL segment mapping
+-- SERVICETYPE_STATUS       | VARCHAR(1)         | YES      | Active/Inactive status
+
+
+-- ============================================================================
+-- 2. DIMENSION VIEWS - Organizational Structure
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 2.1 DIMFINANCEBUSINESSSTRUCTURE_V (26 columns)
+-- Purpose: Full organizational hierarchy from grandparent region down to
+--          station, customer, contract, and cost center. Central view for
+--          all business structure lookups.
+-- Join Key: COSTCENTER -> DIMHISTORYEMPLOYEE_V.COSTCENTER
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- GRANDPARENTREGIONCODE    | VARCHAR(100)       | YES      | Top-level region code
+-- GRANDPARENTREGIONNAME    | VARCHAR(100)       | YES      | Top-level region name
+-- PARENTREGIONCODE         | VARCHAR(100)       | YES      | Parent region code
+-- PARENTREGIONNAME         | VARCHAR(100)       | YES      | Parent region name
+-- ENTITYCODE               | VARCHAR(100)       | YES      | Entity/company code
+-- ENTITYDESCRIPTION        | VARCHAR(100)       | YES      | Entity description
+-- REGIONCODE               | VARCHAR(100)       | YES      | Region code
+-- REGIONNAME               | VARCHAR(100)       | YES      | Region name
+-- SUBREGIONCODE            | VARCHAR(100)       | YES      | Sub-region code
+-- SUBREGIONNAME            | VARCHAR(100)       | YES      | Sub-region name
+-- DIVISIONCODE             | VARCHAR(10)        | YES      | Division code
+-- DIVISIONCODE_ULTIPRO     | VARCHAR(100)       | YES      | UltiPro division code
+-- DIVISIONNAME             | VARCHAR(50)        | YES      | Division name
+-- STATIONCODE              | VARCHAR(10)        | YES      | Station/site code
+-- STATIONNAME              | VARCHAR(100)       | YES      | Station name
+-- CUSTOMERCODE             | VARCHAR(30)        | YES      | Customer code
+-- CUSTOMERNAME             | VARCHAR(100)       | YES      | Customer name
+-- SERVICETYPECODE          | VARCHAR(50)        | YES      | Service type code
+-- SERVICETYPENAME          | VARCHAR(100)       | YES      | Service type name
+-- DEPARTMENTID             | VARCHAR(10)        | YES      | Department ID
+-- DEPARTMENTNAME           | VARCHAR(100)       | YES      | Department name
+-- CONTRACTCODE             | VARCHAR(50)        | YES      | Contract code
+-- CONTRACTNAME             | VARCHAR(100)       | YES      | Contract name
+-- DISPLAYNAME              | VARCHAR(1000)      | YES      | Friendly display name
+-- COSTCENTER               | VARCHAR(10)        | YES      | Cost center code
+-- ENTITY_STATION           | VARCHAR(100)       | YES      | Entity + station composite
+
+-- ---------------------------------------------------------------------------
+-- 2.2 DIMRLSCONTRACTHIERARCHY_V (13 columns)
+-- Purpose: Row-level security view for contract hierarchy. Maps employees
+--          to their authorized contract/station/customer scope.
+-- Join Key: EMPLOYEE_ID -> DIMHISTORYEMPLOYEE_V.EMPLOYEE_ID
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYEE_ID              | VARCHAR(20)        | YES      | Employee identifier
+-- EMPLOYEE_EMAIL           | VARCHAR(100)       | YES      | Employee email
+-- EMPLOYEE_NAME            | VARCHAR(100)       | YES      | Employee name
+-- USERPRINCIPALNAME        | VARCHAR(100)       | YES      | AD/SSO principal name
+-- JOBTYPE_CODE             | VARCHAR(25)        | YES      | Job type code
+-- JOBTYPE_DESCRIPTION      | VARCHAR(100)       | YES      | Job type description
+-- LOCATION_CODE            | VARCHAR(100)       | YES      | Location code
+-- CONTRACT_CODE            | VARCHAR(100)       | YES      | Contract code
+-- STATION_CODE             | VARCHAR(10)        | YES      | Station code
+-- CUSTOMER_CODE            | VARCHAR(50)        | YES      | Customer code
+-- SERVICETYPE_CODE         | VARCHAR(50)        | YES      | Service type code
+-- COST_CENTER              | VARCHAR(10)        | YES      | Cost center
+-- SUBJECT_AREA_HR          | VARCHAR(10)        | YES      | HR subject area flag
+
+
+-- ============================================================================
+-- 3. FACT / AGGREGATE VIEWS - Workforce Metrics
+-- ============================================================================
+For attrition:
+1. Join DIMFINANCEBUSINESSSTRUCTURE_V with AGGEMPCOUNT_ATTRITION_DATA_V_Table
+=> DIMFINANCEBUSINESSSTRUCTURE_V.COSTCENTER -> AGGEMPCOUNT_ATTRITION_DATA_V_Table.COSTCENTER
+=> DIMFINANCEBUSINESSSTRUCTURE_V.STATIONCODE -> AGGEMPCOUNT_ATTRITION_DATA_V_Table.STATIONCODE
+
+2. Join DIMHISTORYEMPLOYEE_V with AGGEMPCOUNT_ATTRITION_DATA_V_Table
+=> DIMHISTORYEMPLOYEE_V.COSTCENTER => AGGEMPCOUNT_ATTRITION_DATA_V_Table.COSTCENTER
+=> DIMHISTORYEMPLOYEE_V.STATIONCODE => AGGEMPCOUNT_ATTRITION_DATA_V_Table.STATIONCODE
+-- ---------------------------------------------------------------------------
+-- 3.1 FACTDAILYWORKDETAILS_MS_V (11 columns)
+-- Purpose: Granular daily work/punch detail records with pay codes and hours.
+--          Core fact table for labor cost and hours analysis.
+-- Join Keys: EMPLOYEE_ID -> DIMHISTORYEMPLOYEE_V.EMPLOYEE_ID
+--            PAYCODE_CODE -> pay code reference
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYEE_ID              | VARCHAR(20)        | YES      | Employee identifier
+-- PUNCHID                  | NUMBER(38,0)       | YES      | Unique punch record ID
+-- APPLYDATE                | DATE               | YES      | Date hours apply to
+-- PAYCODE_CODE             | VARCHAR(25)        | NO       | Pay code (reg, OT, etc.)
+-- PUNCH_HOURS              | NUMBER(12,4)       | YES      | Hours for this punch
+-- CREATEDDATE              | TIMESTAMP_NTZ      | NO       | Record creation timestamp
+-- UPDATEDDATE              | TIMESTAMP_NTZ      | YES      | Last update timestamp
+-- ORIGINAL_TRANSDATE       | TIMESTAMP_NTZ      | YES      | Original transaction date
+-- HISTORICAL_EFFECTIVEDATE | TIMESTAMP_NTZ      | YES      | Historical effective date
+-- ORIGINAL_TRANS_FLAG       | VARCHAR(1)         | YES      | Original transaction flag
+-- APPLYDATE_PAYPERIOD      | NUMBER(38,0)       | YES      | Pay period identifier
+
+-- ---------------------------------------------------------------------------
+-- 3.2 AGGRHOURS_ACTUALHOURS_DETAILS_V (5 columns)
+-- Purpose: Aggregated actual hours by employee, date, and pay code.
+--          Simplified view for hours reporting and dashboards.
+-- Join Key: EMPLOYEE_ID -> DIMHISTORYEMPLOYEE_V.EMPLOYEE_ID
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- EMPLOYEE_ID              | VARCHAR(20)        | YES      | Employee identifier
+-- DATE                     | DATE               | YES      | Work date
+-- PAYCODE_CODE             | VARCHAR(25)        | NO       | Pay code
+-- PAYCODE_DESCRIPTION      | VARCHAR(50)        | NO       | Pay code description
+-- PUNCH_HOURS              | NUMBER(24,4)       | YES      | Total hours
+
+-- ---------------------------------------------------------------------------
+-- 3.3 AGGEMPCOUNT_ATTRITION_DATA_V_Table (5 columns)
+-- Purpose: Aggregated employee headcount and termination counts by station
+--          and cost center over time. Used for attrition/turnover analytics.
+-- Join Keys: STATIONCODE -> DIMFINANCEBUSINESSSTRUCTURE_V.STATIONCODE
+--            COSTCENTER  -> DIMHISTORYEMPLOYEE_V.COSTCENTER
+-- ---------------------------------------------------------------------------
+-- Column Name                  | Data Type          | Nullable | Description
+-- -----------------------------|--------------------|-----------|--------------------------
+-- DATE                         | DATE               | Yes       | Reporting date
+-- STATIONCODE                  | VARCHAR(10)        | YES      | Station/site code
+-- COSTCENTER                   | VARCHAR(10)        | YES      | Cost center code
+-- EMPLOYEE_HEADCOUNT_ATTRITION | NUMBER(14,0)       | YES      | Active + inactive headcount
+-- TOTAL_TERMINATION            | NUMBER(15,0)       | YES      | Total terminations (hard + soft)
+
+-- ---------------------------------------------------------------------------
+-- 3.4 AGGEMPCOUNT_PAY_28DAYS_V (6 columns)
+-- Purpose: Employee count/pay tracking over 28-day pay periods.
+--          Used for headcount and payroll analytics.
+-- Join Key: EMPLOYEE_ID -> DIMHISTORYEMPLOYEE_V.EMPLOYEE_ID
+-- ---------------------------------------------------------------------------
+-- Column Name              | Data Type          | Nullable | Description
+-- -------------------------|--------------------|----------|---------------------------
+-- DATE                     | DATE               | NO       | Pay period date
+-- EMPLOYEE_ID              | VARCHAR(20)        | NO       | Employee identifier
+-- HISTORYEMPLOYEE_EMPLOYMENTTYPECODE | VARCHAR(10) | NO   | Employment type at that time
+-- HISTORYEMPLOYEE_PAYCLASSCODE | VARCHAR(10)    | NO       | Pay class at that time
+-- EMPLOYEE_COSTCENTER      | VARCHAR(10)        | NO       | Cost center at that time
+-- WITH_PAY_FLAG            | VARCHAR(1)         | NO       | Whether employee was paid (Y/N)
+
+
+-- ============================================================================
+-- 4. FILTER VALUES REFERENCE (Actual Distinct Values)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 4.1 EMPLOYMENT STATUS (DIMEMPLOYMENTSTATUS_V / DIMEMPLOYMENTSTATUS_HR_V)
+--     Filter on: DIMHISTORYEMPLOYEE_V.EMPLOYMENTSTATUSCODE
+-- ---------------------------------------------------------------------------
+-- Code | Name
+-- -----|----------
+-- A    | Active
+-- T    | Terminate
+-- L    | Leave
+-- S    | Suspend
+-- R    | Others
+
+-- ---------------------------------------------------------------------------
+-- 4.2 EMPLOYMENT TYPE (DIMEMPLOYMENTTYPE_V)
+--     Filter on: DIMHISTORYEMPLOYEE_V.EMPLOYMENTTYPECODE
+-- ---------------------------------------------------------------------------
+-- Code | Name
+-- -----|----------
+-- F    | Full-Time
+-- P    | Part-Time
+-- Z    | Others
+
+-- ---------------------------------------------------------------------------
+-- 4.3 EMPLOYEE TYPE (DIMEMPLOYEETYPE_V)
+--     Filter on: DIMHISTORYEMPLOYEE_V.EMPLOYEETYPECODE
+-- ---------------------------------------------------------------------------
+-- Code | Name
+-- -----|-------------------------
+-- ADM  | Admin
+-- CON  | Contractor/consultant
+-- EXE  | Executive
+-- GSE  | Ground Service Equipment
+-- INT  | Intern
+-- PER  | Others
+-- REG  | Regular
+-- RET  | Retiree
+-- RR   | Ready Reserve
+-- SST  | SST
+-- STU  | Student
+-- SUM  | Seasonal
+-- SUP  | Supervisor
+-- TMP  | Temporary employee
+-- Z    | Others
+
+-- ---------------------------------------------------------------------------
+-- 4.4 JOB TYPE FAMILIES (DIMJOBTYPE_V.JOBTYPE_FAMILY)
+--     Filter on: DIMHISTORYEMPLOYEE_V.JOBTYPECODE -> DIMJOBTYPE_V
+-- ---------------------------------------------------------------------------
+-- Family  | # Codes | Status
+-- --------|---------|-------
+-- ADMIN   | 35      | A
+-- ANAL    | 12      | A
+-- AVIATN  | 3       | A
+-- CLEAN   | 52      | A
+-- CS      | 66      | A
+-- DP      | 8       | A
+-- FINA    | 73+2    | A/I
+-- FOOD    | 13      | A
+-- GROUND  | 43+1    | A/I
+-- HR      | 58+1    | A/I
+-- LEGAL   | 20      | A
+-- MAIL    | 2       | A
+-- MAINT   | 83      | A
+-- MGR     | 68      | A
+-- OPS     | 44      | A
+-- RISK    | 6       | A
+-- SAFE    | 19      | A
+-- SALES   | 12      | A
+-- SCREEN  | 4       | A
+-- SEC     | 51      | A
+-- TECH    | 36      | A
+-- TRAIN   | 22+1    | A/I
+-- TRANS   | 21      | A
+-- Z       | 84+1    | A/I
+-- (blank) | 465     | A
+
+-- ---------------------------------------------------------------------------
+-- 4.5 GRANDPARENT REGIONS (DIMFINANCEBUSINESSSTRUCTURE_V)
+--     Top-level geographic/business regions
+-- ---------------------------------------------------------------------------
+-- Code       | Name
+-- -----------|-------------------------------
+-- GRegC      | Central Region
+-- GRegE      | Region East
+-- GRegEWR    | Newark Region
+-- GRegErmc   | Region ERMC
+-- GRegGSE    | Region GSE
+-- GRegNE     | Northeast Region
+-- GRegOH     | Region OverHead
+-- GRegPro    | Region Prospect Unconsolidated
+-- GRegSE     | Southeast Region
+-- GRegSec    | Region Security
+-- GRegUK     | Region Unifi UK
+-- GRegViggo  | Region Viggo
+-- GRegW      | West Region
+
+-- ---------------------------------------------------------------------------
+-- 4.6 LEGAL ENTITIES (DIMFINANCEBUSINESSSTRUCTURE_V.ENTITYCODE)
+-- ---------------------------------------------------------------------------
+-- Code       | Name
+-- -----------|---------------------------------------------
+-- Legal_003  | AirCo
+-- Legal_004  | Unifi Aviation, LLC
+-- Legal_007  | ERMC Aviation LLC
+-- Legal_015  | Unifi Aviation Canada, Inc.
+-- Legal_016  | Unifi Aviation UK Limited
+-- Legal_020  | Unifi Security, LLC
+-- Legal_021  | Unifi CA Security, Inc.
+-- Legal_022  | Up & Away Aviation Detailing Limited
+-- Legal_023  | Unifi Aviation UK, Ltd
+-- Legal_032  | Prospect International Airport Services, LLC
+-- Legal_037  | Unifi Aviation Ireland, Ltd
+-- Legal_038  | Unifi Service LLC
+-- Legal_041  | Unifi Holdings NL B.V.
+
+-- ---------------------------------------------------------------------------
+-- 4.7 DEPARTMENTS (DIMFINANCEBUSINESSSTRUCTURE_V.DEPARTMENTID)
+-- ---------------------------------------------------------------------------
+-- Code    | Name
+-- --------|----------------------------------
+-- Dep001  | Historical Accounting/Finance
+-- Dep004  | Legal
+-- Dep005  | HR
+-- Dep007  | Sales & Marketing
+-- Dep008  | Safety & Compliance
+-- Dep009  | Accounting
+-- Dep011  | FP&A
+-- Dep012  | Shared Services
+-- Dep013  | Payroll
+-- Dep014  | Operations
+-- Dep015  | Benefits and Compensation
+-- Dep017  | Talent Acquisition
+-- Dep018  | Risk Management and Insurance
+-- Dep019  | Field Safety
+-- Dep110  | Audit/Tax/Treasury
+-- Dep111  | Executive
+-- Dep112  | IT
+-- Dep213  | Employee Relations
+-- Dep214  | Pass Bureau
+-- Dep215  | Technology Consultants
+-- Dep216  | Historical Overhead
+-- Dep217  | Training
+-- Dep221  | Historical Division Overhead
+-- Dep223  | Other Overhead
+-- Dep224  | Argenbright Allocation
+-- Dep227  | Operational Analytics
+-- Dep228  | Pricing
+-- Dep229  | Resource Planning
+-- Dep230  | AVS VP/RM OH
+-- Dep231  | Station OH
+-- Dep232  | Customer Account Management
+-- Dep233  | Service Delivery
+-- Dep234  | GSE OH
+-- Dep235  | Security OH
+-- Dep236  | Aviation Insurance
+-- Dep237  | Operational Support Team
+-- Dep238  | GSE Refurbishment
+-- Dep239  | Management Fee
+-- Dep240  | Backstop Revenue
+-- Dep241  | PPA
+-- Dep242  | One-time Separation
+-- Dep243  | Other
+-- Dep244  | Internal Communications
+-- Dep245  | IT Location Related OH
+-- Dep246  | HQ Safety
+-- Dep247  | Aviation Training
+-- Dep248  | Instructional Design and LD
+-- Dep250  | Corporate
+
+-- ---------------------------------------------------------------------------
+-- 4.8 SERVICE TYPES (DIMSERVICETYPE_V) - Top examples (100 total)
+--     Filter on: DIMHISTORYEMPLOYEE_V.SERVICETYPECODE
+-- ---------------------------------------------------------------------------
+-- Code     | Name                          | Status
+-- ---------|-------------------------------|-------
+-- ALLO     | Allocation                    | A
+-- AVSEC    | Aviation Security             | A
+-- BAG264   | Baggage Handling              | A
+-- BMAIN    | BHS Maintenance               | A
+-- BUS      | Employee Shuttles             | A
+-- CBN      | Cabin                         | A
+-- CGO      | Cargo                         | A
+-- DEI      | Deicing Services              | A
+-- EMPSRC   | Employee Screening            | A
+-- GSEMTC   | GSE Maintenance               | A
+-- ITPFL    | Into Plane Fueling            | A
+-- JANI     | Janitorial                    | A
+-- MAINT    | Maintenance (various)         | A
+-- OPS      | Operations                    | A
+-- PAX      | PAX Service                   | A
+-- PMAIN    | PBB Maintenance               | A
+-- RMP      | Ramp Service                  | A
+-- SEC      | Security                      | A
+-- SKY      | Skycaps                       | A
+--   (100 service types total - query DIMSERVICETYPE_V for full list)
+
+
+-- ============================================================================
+-- RELATIONSHIP MAP (JOIN KEYS)
+-- ============================================================================
+--
+--  DIMHISTORYEMPLOYEE_V (central)
+--       |
+--       |-- COSTCENTER ------------> DIMFINANCEBUSINESSSTRUCTURE_V.COSTCENTER
+--       |-- EMPLOYEETYPECODE ------> DIMEMPLOYEETYPE_V.EMPLOYEETYPE_CODE
+--       |-- EMPLOYMENTSTATUSCODE --> DIMEMPLOYMENTSTATUS_V.EMPLOYMENTSTATUS_CODE
+--       |-- EMPLOYMENTSTATUSCODE --> DIMEMPLOYMENTSTATUS_HR_V.EMPLOYMENTSTATUS_CODE
+--       |-- EMPLOYMENTTYPECODE ----> DIMEMPLOYMENTTYPE_V.EMPLOYMENTTYPE_CODE
+--       |-- JOBTYPECODE -----------> DIMJOBTYPE_V.JOBTYPE_CODE
+--       |-- SERVICETYPECODE -------> DIMSERVICETYPE_V.SERVICETYPE_CODE
+--       |-- EMPLOYEE_ID -----------> DIMRLSCONTRACTHIERARCHY_V.EMPLOYEE_ID
+--       |-- EMPLOYEE_ID -----------> FACTDAILYWORKDETAILS_MS_V.EMPLOYEE_ID
+--       |-- EMPLOYEE_ID -----------> AGGRHOURS_ACTUALHOURS_DETAILS_V.EMPLOYEE_ID
+--       |-- EMPLOYEE_ID -----------> AGGEMPCOUNT_PAY_28DAYS_V.EMPLOYEE_ID
+--       |-- COSTCENTER ------------> AGGEMPCOUNT_ATTRITION_DATA_V_Table.COSTCENTER
+--       |-- STATIONCODE -----------> AGGEMPCOUNT_ATTRITION_DATA_V_Table.STATIONCODE
+--
+-- ============================================================================

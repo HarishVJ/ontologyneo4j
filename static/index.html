@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NL2SQL Ontology POC — Unifi Aviation</title>
+    <style>
+        :root {
+            --primary: #1a56db;
+            --primary-light: #e8f0fe;
+            --success: #059669;
+            --success-light: #d1fae5;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --error: #dc2626;
+            --error-light: #fee2e2;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 8px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        /* Header */
+        header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 16px 0;
+            margin-bottom: 24px;
+        }
+        header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo { font-size: 20px; font-weight: 700; color: var(--primary); }
+        .logo span { color: var(--gray-600); font-weight: 400; }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-poc { background: var(--warning-light); color: var(--warning); }
+
+        /* Input Section */
+        .input-section {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .input-section h2 { font-size: 16px; margin-bottom: 12px; color: var(--gray-800); }
+        .input-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .input-row input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-row input:focus { border-color: var(--primary); }
+        .btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn:hover { background: #1e40af; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Examples */
+        .examples { display: flex; gap: 8px; flex-wrap: wrap; }
+        .example-btn {
+            padding: 6px 12px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            border-radius: 16px;
+            font-size: 13px;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .example-btn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        .complexity-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-left: 6px;
+        }
+        .tag-simple { background: var(--success-light); color: var(--success); }
+        .tag-complex { background: var(--warning-light); color: var(--warning); }
+
+        /* Results */
+        .results { display: none; }
+        .results.show { display: block; }
+
+        /* Answer Card */
+        .answer-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--success);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .answer-card h3 { font-size: 14px; color: var(--gray-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .answer-text { font-size: 18px; font-weight: 600; color: var(--gray-900); }
+        .answer-meta { margin-top: 12px; display: flex; gap: 16px; font-size: 13px; color: var(--gray-600); }
+
+        /* Pipeline Steps */
+        .pipeline-section {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .pipeline-header {
+            padding: 16px 24px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+        .component-label {
+            font-size: 12px;
+            color: var(--gray-600);
+            font-weight: 400;
+            background: var(--gray-100);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .pipeline-body { padding: 16px 24px; }
+        .pipeline-body pre {
+            background: var(--gray-900);
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .pipeline-body .sql-block {
+            background: #1e293b;
+            color: #93c5fd;
+        }
+
+        /* Validation */
+        .check-list { list-style: none; padding: 0; }
+        .check-list li {
+            padding: 6px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .check-icon { font-size: 16px; }
+        .check-pass { color: var(--success); }
+        .check-fail { color: var(--error); }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .status-passed { background: var(--success-light); color: var(--success); }
+        .status-failed { background: var(--error-light); color: var(--error); }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: var(--gray-600);
+        }
+        .loading.show { display: block; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Collapsible */
+        .collapsible { cursor: pointer; user-select: none; }
+        .collapsible::after { content: ' ▾'; font-size: 12px; }
+        .collapsed .pipeline-body { display: none; }
+        .collapsed .collapsible::after { content: ' ▸'; }
+
+        /* Error */
+        .error-card {
+            background: var(--error-light);
+            border-left: 4px solid var(--error);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            color: var(--error);
+            font-weight: 500;
+        }
+
+        /* Architecture Flow */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 0;
+            flex-wrap: wrap;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+        .arch-step {
+            padding: 4px 10px;
+            background: var(--gray-100);
+            border-radius: 4px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+        .arch-step.active { background: var(--primary-light); color: var(--primary); font-weight: 700; }
+        .arch-arrow { color: var(--gray-300); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">NL2SQL Ontology <span>POC</span></div>
+            <span class="badge badge-poc">Executive Demo</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Architecture Flow -->
+        <div class="arch-flow" id="archFlow">
+            <span class="arch-step">User Question</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">Intent Extraction</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">Neo4j Lookup</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">Context Builder</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">LLM SQL Gen</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">SQL Validator</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">Executor</span>
+            <span class="arch-arrow">→</span>
+            <span class="arch-step">Answer</span>
+        </div>
+
+        <!-- Input -->
+        <div class="input-section">
+            <h2>Ask a workforce analytics question</h2>
+            <div class="input-row">
+                <input type="text" id="questionInput" placeholder="e.g., Show me headcount at ATL" />
+                <button class="btn" id="askBtn" onclick="askQuestion()">Ask</button>
+            </div>
+            <div class="examples" id="examples"></div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Running pipeline...</p>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <!-- Error -->
+            <div class="error-card" id="errorCard" style="display:none"></div>
+
+            <!-- Answer -->
+            <div class="answer-card" id="answerCard" style="display:none">
+                <h3>Answer</h3>
+                <div class="answer-text" id="answerText"></div>
+                <div class="answer-meta" id="answerMeta"></div>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div id="pipelineSteps"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load examples on page load
+        window.addEventListener('DOMContentLoaded', loadExamples);
+
+        async function loadExamples() {
+            try {
+                const res = await fetch('/examples');
+                const data = await res.json();
+                const container = document.getElementById('examples');
+                container.innerHTML = data.examples.map((ex, i) => {
+                    const tag = ex.complexity === 'complex'
+                        ? '<span class="complexity-tag tag-complex">complex</span>'
+                        : '<span class="complexity-tag tag-simple">simple</span>';
+                    return `<button class="example-btn" data-index="${i}">${ex.question}${tag}</button>`;
+                }).join('');
+                // Bind click events (avoids apostrophe-in-onclick issues)
+                container.querySelectorAll('.example-btn').forEach((btn, i) => {
+                    btn.addEventListener('click', () => setQuestion(data.examples[i].question));
+                });
+            } catch (e) {
+                console.error('Failed to load examples:', e);
+            }
+        }
+
+        function setQuestion(q) {
+            document.getElementById('questionInput').value = q;
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) return;
+
+            // UI state
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('askBtn').disabled = true;
+
+            try {
+                const res = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        question: question,
+                        user_id: 'harish',
+                        security_scope: {
+                            stations: ['ATL', 'JFK', 'LGA'],
+                            customers: ['DL', 'UA']
+                        }
+                    })
+                });
+                const data = await res.json();
+                renderResults(data);
+            } catch (e) {
+                document.getElementById('errorCard').style.display = 'block';
+                document.getElementById('errorCard').textContent = 'Connection error: ' + e.message;
+                document.getElementById('results').classList.add('show');
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('askBtn').disabled = false;
+            }
+        }
+
+        function renderResults(data) {
+            const results = document.getElementById('results');
+            const errorCard = document.getElementById('errorCard');
+            const answerCard = document.getElementById('answerCard');
+            const stepsDiv = document.getElementById('pipelineSteps');
+
+            // Reset
+            errorCard.style.display = 'none';
+            answerCard.style.display = 'none';
+            stepsDiv.innerHTML = '';
+
+            // Error
+            if (data.error) {
+                errorCard.style.display = 'block';
+                errorCard.textContent = data.error;
+            }
+
+            // Answer
+            if (data.answer) {
+                answerCard.style.display = 'block';
+                document.getElementById('answerText').textContent = data.answer;
+                const meta = [];
+                if (data.detected_kpi) meta.push(`KPI: ${data.detected_kpi}`);
+                if (data.detected_filters?.station) meta.push(`Station: ${data.detected_filters.station}`);
+                if (data.detected_filters?.period) meta.push(`Period: ${data.detected_filters.period}`);
+                if (data.elapsed_ms) meta.push(`${data.elapsed_ms}ms`);
+                if (data.validation?.status) meta.push(`Validation: ${data.validation.status}`);
+                document.getElementById('answerMeta').innerHTML = meta.map(m => `<span>${m}</span>`).join('');
+            }
+
+            // Pipeline steps
+            if (data.pipeline_steps) {
+                const steps = data.pipeline_steps;
+
+                // Step 1: Extraction
+                if (steps['1_extraction']) {
+                    stepsDiv.innerHTML += renderStep(1, 'Intent + Term Extraction', 'FastAPI Backend', steps['1_extraction']);
+                }
+
+                // Step 2: Neo4j Context
+                if (steps['2_neo4j_context']) {
+                    stepsDiv.innerHTML += renderStep(2, 'Neo4j Ontology Lookup', 'Neo4j', steps['2_neo4j_context']);
+                }
+
+                // Step 3: Structured Context
+                if (steps['3_structured_context']) {
+                    stepsDiv.innerHTML += renderStep(3, 'Structured Context Builder', 'Python Backend', steps['3_structured_context']);
+                }
+
+                // Step 4: Generated SQL
+                if (steps['4_generated_sql']) {
+                    stepsDiv.innerHTML += renderSQLStep(4, 'LLM SQL Generator', 'LLM (Azure OpenAI)', steps['4_generated_sql']);
+                }
+
+                // Step 5: Validation
+                if (steps['5_validation']) {
+                    stepsDiv.innerHTML += renderValidationStep(5, 'SQL Validator', 'Python Validation Layer', steps['5_validation']);
+                }
+
+                // Step 6: Execution
+                if (steps['6_execution']) {
+                    stepsDiv.innerHTML += renderStep(6, 'Mock Executor', 'Snowflake (Mock)', steps['6_execution']);
+                }
+            }
+
+            results.classList.add('show');
+        }
+
+        function renderStep(num, title, component, data) {
+            const json = JSON.stringify(data, null, 2);
+            return `
+                <div class="pipeline-section">
+                    <div class="pipeline-header collapsible" onclick="toggleStep(this)">
+                        <span><span class="step-number">${num}</span>${title}</span>
+                        <span class="component-label">${component}</span>
+                    </div>
+                    <div class="pipeline-body">
+                        <pre>${escapeHtml(json)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSQLStep(num, title, component, sql) {
+            return `
+                <div class="pipeline-section">
+                    <div class="pipeline-header collapsible" onclick="toggleStep(this)">
+                        <span><span class="step-number">${num}</span>${title}</span>
+                        <span class="component-label">${component}</span>
+                    </div>
+                    <div class="pipeline-body">
+                        <pre class="sql-block">${escapeHtml(sql)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderValidationStep(num, title, component, data) {
+            const statusClass = data.status === 'passed' ? 'status-passed' : 'status-failed';
+            let checksHtml = '';
+            if (data.checks) {
+                checksHtml = '<ul class="check-list">' +
+                    data.checks.map(c => `<li><span class="check-icon check-pass">✓</span>${c}</li>`).join('') +
+                    '</ul>';
+            }
+            if (data.errors) {
+                checksHtml += '<ul class="check-list">' +
+                    data.errors.map(e => `<li><span class="check-icon check-fail">✗</span>${e}</li>`).join('') +
+                    '</ul>';
+            }
+            return `
+                <div class="pipeline-section">
+                    <div class="pipeline-header collapsible" onclick="toggleStep(this)">
+                        <span><span class="step-number">${num}</span>${title}</span>
+                        <span>
+                            <span class="status-badge ${statusClass}">${data.status}</span>
+                            <span class="component-label">${component}</span>
+                        </span>
+                    </div>
+                    <div class="pipeline-body">
+                        ${checksHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleStep(el) {
+            el.parentElement.classList.toggle('collapsed');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Enter key support
+        document.getElementById('questionInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') askQuestion();
+        });
+    </script>
+</body>
+</html>
