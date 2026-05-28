@@ -1,0 +1,161 @@
+# ============================================================
+# KPI Recipes: Contract Hierarchy Domain
+# Each KPI defines: formula, views, steps, filters, output shape.
+# The pipeline reads this via Neo4j graph — not directly from YAML at runtime.
+# ============================================================
+
+domain: Contract Hierarchy
+data_source: DIMFINANCEBUSINESSSTRUCTURE_V
+description: "Org hierarchy queries — stations, customers, contracts, regions, divisions"
+
+kpis:
+  - id: kpi_list_contracts
+    name: "List Contracts"
+    description: "List contracts with optional filters by station, customer, region, division"
+    complexity: simple
+    formula: "SELECT DISTINCT CONTRACTCODE, CONTRACTNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME FROM DIMFINANCEBUSINESSSTRUCTURE_V WHERE {filters}"
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+    steps:
+      - order: 1
+        name: "select_contracts"
+        logic: "Select distinct contract records from business structure view with applied filters"
+        required_columns: [CONTRACTCODE, CONTRACTNAME, STATIONCODE, STATIONNAME, CUSTOMERCODE, CUSTOMERNAME]
+    filters:
+      - { column: STATIONCODE, source: detected_station, operator: "=" }
+      - { column: CUSTOMERNAME, source: detected_customer, operator: "=" }
+      - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
+      - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+      - { column: ENTITYDESCRIPTION, source: detected_entity, operator: "=" }
+    output_shape:
+      type: list
+      columns: [CONTRACTCODE, CONTRACTNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME]
+      order_by: [STATIONCODE, CONTRACTNAME]
+    synonyms:
+      - "list contracts"
+      - "show contracts"
+      - "all contracts"
+      - "what contracts"
+      - "contracts for"
+    version: "1.0"
+    status: active
+    owner: data_team
+    valid_from: "2026-05-28"
+
+  - id: kpi_count_contracts
+    name: "Count Contracts"
+    description: "Count contracts grouped by station, customer, region, or division"
+    complexity: simple
+    formula: "SELECT {group_by}, COUNT(DISTINCT CONTRACTCODE) AS contract_count FROM DIMFINANCEBUSINESSSTRUCTURE_V WHERE {filters} GROUP BY {group_by}"
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+    steps:
+      - order: 1
+        name: "count_contracts"
+        logic: "Count distinct contracts, group by detected dimension (station, customer, region, or division)"
+        required_columns: [CONTRACTCODE, STATIONCODE, CUSTOMERCODE, REGIONCODE, DIVISIONNAME, GRANDPARENTREGIONNAME]
+    filters:
+      - { column: STATIONCODE, source: detected_station, operator: "=" }
+      - { column: CUSTOMERNAME, source: detected_customer, operator: "=" }
+      - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
+      - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+    output_shape:
+      type: aggregate
+      columns: [group_by_field, contract_count]
+      order_by: [contract_count DESC]
+    synonyms:
+      - "how many contracts"
+      - "number of contracts"
+      - "contract count"
+      - "count contracts"
+    version: "1.0"
+    status: active
+    owner: data_team
+    valid_from: "2026-05-28"
+
+  - id: kpi_list_stations
+    name: "List Stations"
+    description: "List all stations/airports, optionally filtered by region or division"
+    complexity: simple
+    formula: "SELECT DISTINCT STATIONCODE, STATIONNAME FROM DIMFINANCEBUSINESSSTRUCTURE_V WHERE {filters} ORDER BY STATIONCODE"
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+    steps:
+      - order: 1
+        name: "select_stations"
+        logic: "Select distinct station codes and names with optional hierarchy filters"
+        required_columns: [STATIONCODE, STATIONNAME, REGIONCODE, DIVISIONNAME, GRANDPARENTREGIONNAME]
+    filters:
+      - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
+      - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+      - { column: ENTITYDESCRIPTION, source: detected_entity, operator: "=" }
+    output_shape:
+      type: list
+      columns: [STATIONCODE, STATIONNAME]
+      order_by: [STATIONCODE]
+    synonyms:
+      - "list stations"
+      - "list airports"
+      - "all stations"
+      - "all hubs"
+      - "show stations"
+    version: "1.0"
+    status: active
+    owner: data_team
+    valid_from: "2026-05-28"
+
+  - id: kpi_list_customers
+    name: "List Customers"
+    description: "List customers at a station or in a region"
+    complexity: simple
+    formula: "SELECT DISTINCT CUSTOMERCODE, CUSTOMERNAME FROM DIMFINANCEBUSINESSSTRUCTURE_V WHERE {filters} ORDER BY CUSTOMERNAME"
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+    steps:
+      - order: 1
+        name: "select_customers"
+        logic: "Select distinct customers with station/region/division filters"
+        required_columns: [CUSTOMERCODE, CUSTOMERNAME, STATIONCODE, REGIONCODE, DIVISIONNAME]
+    filters:
+      - { column: STATIONCODE, source: detected_station, operator: "=" }
+      - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
+      - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+    output_shape:
+      type: list
+      columns: [CUSTOMERCODE, CUSTOMERNAME]
+      order_by: [CUSTOMERNAME]
+    synonyms:
+      - "list customers"
+      - "show customers"
+      - "all customers"
+      - "customers at"
+    version: "1.0"
+    status: active
+    owner: data_team
+    valid_from: "2026-05-28"
+
+  - id: kpi_hierarchy_lookup
+    name: "Hierarchy Lookup"
+    description: "Look up any entity in the org hierarchy by cost center, contract name, or code"
+    complexity: medium
+    formula: "SELECT GRANDPARENTREGIONNAME, REGIONNAME, SUBREGIONNAME, ENTITYDESCRIPTION, DIVISIONNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME, SERVICETYPENAME, DEPARTMENTNAME, CONTRACTCODE, CONTRACTNAME, COSTCENTER FROM DIMFINANCEBUSINESSSTRUCTURE_V WHERE {lookup_condition}"
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+    steps:
+      - order: 1
+        name: "hierarchy_lookup"
+        logic: "Filter by cost center, contract code, or contract name and return full hierarchy path from grand parent region down to contract"
+        required_columns: [COSTCENTER, CONTRACTCODE, CONTRACTNAME, STATIONCODE, STATIONNAME, CUSTOMERCODE, CUSTOMERNAME, DIVISIONNAME, REGIONNAME, SUBREGIONNAME, GRANDPARENTREGIONNAME, ENTITYDESCRIPTION, SERVICETYPENAME, DEPARTMENTNAME]
+    filters:
+      - { column: COSTCENTER, source: detected_costcenter, operator: "=" }
+      - { column: CONTRACTCODE, source: detected_contract, operator: "=" }
+      - { column: CONTRACTNAME, source: detected_contract_name, operator: LIKE }
+    output_shape:
+      type: detail
+      columns: [GRANDPARENTREGIONNAME, REGIONNAME, SUBREGIONNAME, ENTITYDESCRIPTION, DIVISIONNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME, SERVICETYPENAME, DEPARTMENTNAME, CONTRACTCODE, CONTRACTNAME, COSTCENTER]
+      order_by: [STATIONCODE]
+    synonyms:
+      - "contract name for cost center"
+      - "cost center"
+      - "which region"
+      - "hierarchy"
+      - "org structure"
+    version: "1.0"
+    status: active
+    owner: data_team
+    valid_from: "2026-05-28"

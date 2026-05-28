@@ -1,0 +1,113 @@
+# ============================================================
+# Term Dictionary
+# Maps business vocabulary to Snowflake column values.
+# To add new terms: add entries here and re-run seed_ontology.py
+# ============================================================
+
+categories:
+  - name: stations
+    column: STATIONCODE
+    description: "Airport/station codes recognized by the system"
+    terms:
+      - { code: ATL, canonical: "Atlanta" }
+      - { code: MSP, canonical: "Minneapolis" }
+      - { code: JFK, canonical: "New York JFK" }
+      - { code: LAX, canonical: "Los Angeles" }
+      - { code: LAS, canonical: "Las Vegas" }
+      - { code: DTW, canonical: "Detroit" }
+      - { code: DFW, canonical: "Dallas Fort Worth" }
+      - { code: ORD, canonical: "Chicago O'Hare" }
+      - { code: DEN, canonical: "Denver" }
+      - { code: SEA, canonical: "Seattle" }
+      - { code: SFO, canonical: "San Francisco" }
+      - { code: MIA, canonical: "Miami" }
+      - { code: BOS, canonical: "Boston" }
+      - { code: CLT, canonical: "Charlotte" }
+      - { code: PHX, canonical: "Phoenix" }
+      - { code: IAH, canonical: "Houston" }
+      - { code: EWR, canonical: "Newark" }
+      - { code: MCO, canonical: "Orlando" }
+      - { code: SAN, canonical: "San Diego" }
+      - { code: TPA, canonical: "Tampa" }
+      - { code: PDX, canonical: "Portland" }
+
+  - name: customers
+    column: CUSTOMERNAME
+    description: "Customer/airline names"
+    terms:
+      - { code: Delta, canonical: "Delta Air Lines" }
+      - { code: DL, canonical: "Delta Air Lines", context: customer }
+      - { code: Alaska, canonical: "Alaska Airlines" }
+      - { code: AS, canonical: "Alaska Airlines", context: customer }
+      - { code: United, canonical: "United Airlines" }
+      - { code: UA, canonical: "United Airlines", context: customer }
+      - { code: American, canonical: "American Airlines" }
+      - { code: AA, canonical: "American Airlines", context: customer }
+      - { code: Southwest, canonical: "Southwest Airlines" }
+      - { code: WN, canonical: "Southwest Airlines", context: customer }
+
+  - name: regions
+    column: GRANDPARENTREGIONNAME
+    description: "Grand parent region names"
+    terms:
+      - { code: Central, canonical: "Central" }
+      - { code: West, canonical: "West" }
+      - { code: East, canonical: "East" }
+      - { code: Southeast, canonical: "Southeast" }
+      - { code: Mid West, canonical: "Mid West" }
+
+  - name: divisions
+    column: DIVISIONNAME
+    description: "Division names"
+    terms:
+      - { code: Security, canonical: "Security" }
+      - { code: Cabin Services, canonical: "Cabin Services" }
+      - { code: Ground Handling, canonical: "Ground Handling" }
+      - { code: Full Handling, canonical: "Full Handling" }
+      - { code: Cargo, canonical: "Cargo" }
+
+  - name: entities
+    column: ENTITYDESCRIPTION
+    description: "Legal entity names"
+    terms:
+      - { code: Unifi, canonical: "Unifi" }
+      - { code: Prospect, canonical: "Prospect" }
+
+  - name: kpi_synonyms
+    column: null
+    description: "Natural language phrases that map to KPI identifiers"
+    terms:
+      # Contract listing
+      - { code: "list contracts", canonical: "List Contracts" }
+      - { code: "show contracts", canonical: "List Contracts" }
+      - { code: "all contracts", canonical: "List Contracts" }
+      - { code: "what contracts", canonical: "List Contracts" }
+      - { code: "contracts for", canonical: "List Contracts" }
+      - { code: "list all the contracts", canonical: "List Contracts" }
+      # Contract counting
+      - { code: "how many contracts", canonical: "Count Contracts" }
+      - { code: "number of contracts", canonical: "Count Contracts" }
+      - { code: "contract count", canonical: "Count Contracts" }
+      - { code: "count contracts", canonical: "Count Contracts" }
+      # Station listing
+      - { code: "list stations", canonical: "List Stations" }
+      - { code: "list all stations", canonical: "List Stations" }
+      - { code: "list all the stations", canonical: "List Stations" }
+      - { code: "all stations", canonical: "List Stations" }
+      - { code: "list all the airports", canonical: "List Stations" }
+      - { code: "list airports", canonical: "List Stations" }
+      - { code: "show stations", canonical: "List Stations" }
+      - { code: "all hubs", canonical: "List Stations" }
+      - { code: "list all hubs", canonical: "List Stations" }
+      # Customer listing
+      - { code: "list customers", canonical: "List Customers" }
+      - { code: "show customers", canonical: "List Customers" }
+      - { code: "all customers", canonical: "List Customers" }
+      - { code: "what customers", canonical: "List Customers" }
+      - { code: "customers at", canonical: "List Customers" }
+      # Hierarchy lookup
+      - { code: "contract name for cost center", canonical: "Hierarchy Lookup" }
+      - { code: "cost center", canonical: "Hierarchy Lookup" }
+      - { code: "which region", canonical: "Hierarchy Lookup" }
+      - { code: "hierarchy", canonical: "Hierarchy Lookup" }
+      - { code: "org structure", canonical: "Hierarchy Lookup" }

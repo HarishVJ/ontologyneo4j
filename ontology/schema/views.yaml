@@ -1,0 +1,50 @@
+# ============================================================
+# Snowflake View Definitions
+# Single source of truth for all view/column metadata.
+# To add/change a view: edit this file and re-run seed_ontology.py
+# ============================================================
+
+views:
+  - name: DIMFINANCEBUSINESSSTRUCTURE_V
+    schema: AIRCO_EDW_UAT.ILINKAICHAT
+    alias: b
+    description: "Denormalized org hierarchy — 11 levels from GrandParentRegion to Contract"
+    columns:
+      # Level 1: Grand Parent Region
+      - { name: GRANDPARENTREGIONCODE, type: VARCHAR(100), description: "Top-level region code" }
+      - { name: GRANDPARENTREGIONNAME, type: VARCHAR(100), description: "Top-level region name" }
+      # Level 2: Parent Region
+      - { name: PARENTREGIONCODE, type: VARCHAR(100), description: "Parent region code" }
+      - { name: PARENTREGIONNAME, type: VARCHAR(100), description: "Parent region name" }
+      # Level 3: Entity (Legal Entity)
+      - { name: ENTITYCODE, type: VARCHAR(100), description: "Legal entity code" }
+      - { name: ENTITYDESCRIPTION, type: VARCHAR(100), description: "Legal entity description" }
+      # Level 4: Region
+      - { name: REGIONCODE, type: VARCHAR(100), description: "Region code" }
+      - { name: REGIONNAME, type: VARCHAR(100), description: "Region name" }
+      # Level 5: Sub-Region
+      - { name: SUBREGIONCODE, type: VARCHAR(100), description: "Sub-region code" }
+      - { name: SUBREGIONNAME, type: VARCHAR(100), description: "Sub-region name" }
+      # Level 6: Division
+      - { name: DIVISIONCODE, type: VARCHAR(10), description: "Division code" }
+      - { name: DIVISIONCODE_ULTIPRO, type: VARCHAR(100), description: "Division code (UltiPro)" }
+      - { name: DIVISIONNAME, type: VARCHAR(50), description: "Division name" }
+      # Level 7: Station
+      - { name: STATIONCODE, type: VARCHAR(10), description: "Station/airport code (e.g. ATL, MSP)" }
+      - { name: STATIONNAME, type: VARCHAR(100), description: "Station full name" }
+      # Level 8: Customer
+      - { name: CUSTOMERCODE, type: VARCHAR(30), description: "Customer code" }
+      - { name: CUSTOMERNAME, type: VARCHAR(100), description: "Customer name (e.g. Delta, Alaska)" }
+      # Level 9: Service Type
+      - { name: SERVICETYPECODE, type: VARCHAR(50), description: "Service type code" }
+      - { name: SERVICETYPENAME, type: VARCHAR(100), description: "Service type name" }
+      # Level 10: Department
+      - { name: DEPARTMENTID, type: VARCHAR(10), description: "Department ID" }
+      - { name: DEPARTMENTNAME, type: VARCHAR(100), description: "Department name" }
+      # Level 11: Contract (leaf node)
+      - { name: CONTRACTCODE, type: VARCHAR(50), description: "Contract code" }
+      - { name: CONTRACTNAME, type: VARCHAR(100), description: "Contract name" }
+      # Derived / Composite
+      - { name: DISPLAYNAME, type: VARCHAR(1000), description: "Formatted display name" }
+      - { name: COSTCENTER, type: VARCHAR(10), description: "Cost center code" }
+      - { name: ENTITY_STATION, type: VARCHAR(100), description: "Entity-station composite key" }

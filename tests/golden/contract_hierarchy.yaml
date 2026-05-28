@@ -1,0 +1,104 @@
+# ============================================================
+# Golden Tests: Contract Hierarchy Domain
+# Each test case defines: question, expected KPI, expected terms,
+# and expected SQL patterns. Used for regression testing.
+# ============================================================
+
+tests:
+  - id: gh_001
+    question: "List all contracts for MSP"
+    expected_kpi: "List Contracts"
+    expected_terms:
+      station: MSP
+    expected_sql_contains:
+      - "DIMFINANCEBUSINESSSTRUCTURE_V"
+      - "CONTRACTCODE"
+      - "CONTRACTNAME"
+      - "STATIONCODE = 'MSP'"
+    expected_sql_not_contains:
+      - "DROP"
+      - "DELETE"
+
+  - id: gh_002
+    question: "How many contracts are there in the Security division?"
+    expected_kpi: "Count Contracts"
+    expected_terms:
+      division: Security
+    expected_sql_contains:
+      - "COUNT"
+      - "DISTINCT"
+      - "CONTRACTCODE"
+      - "DIVISIONNAME"
+
+  - id: gh_003
+    question: "List all the stations"
+    expected_kpi: "List Stations"
+    expected_terms: {}
+    expected_sql_contains:
+      - "STATIONCODE"
+      - "STATIONNAME"
+      - "DISTINCT"
+
+  - id: gh_004
+    question: "List all customers at ATL"
+    expected_kpi: "List Customers"
+    expected_terms:
+      station: ATL
+    expected_sql_contains:
+      - "CUSTOMERCODE"
+      - "CUSTOMERNAME"
+      - "STATIONCODE = 'ATL'"
+
+  - id: gh_005
+    question: "List all contracts for Central region"
+    expected_kpi: "List Contracts"
+    expected_terms:
+      region: Central
+    expected_sql_contains:
+      - "CONTRACTCODE"
+      - "GRANDPARENTREGIONNAME"
+
+  - id: gh_006
+    question: "What contracts does Delta have?"
+    expected_kpi: "List Contracts"
+    expected_terms:
+      customer: "Delta Air Lines"
+    expected_sql_contains:
+      - "CONTRACTCODE"
+      - "CUSTOMERNAME"
+
+  - id: gh_007
+    question: "List all the airports"
+    expected_kpi: "List Stations"
+    expected_terms: {}
+    expected_sql_contains:
+      - "STATIONCODE"
+      - "STATIONNAME"
+
+  - id: gh_008
+    question: "Provide the contract name for cost center 641"
+    expected_kpi: "Hierarchy Lookup"
+    expected_terms:
+      costcenter: "641"
+    expected_sql_contains:
+      - "COSTCENTER"
+      - "CONTRACTNAME"
+
+  - id: gh_009
+    question: "How many contracts does Delta have at ATL?"
+    expected_kpi: "Count Contracts"
+    expected_terms:
+      station: ATL
+      customer: "Delta Air Lines"
+    expected_sql_contains:
+      - "COUNT"
+      - "CONTRACTCODE"
+
+  - id: gh_010
+    question: "Show contracts for Ground Handling division"
+    expected_kpi: "List Contracts"
+    expected_terms:
+      division: "Ground Handling"
+    expected_sql_contains:
+      - "CONTRACTCODE"
+      - "DIVISIONNAME"

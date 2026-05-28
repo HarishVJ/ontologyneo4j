@@ -1,0 +1,14 @@
+# ============================================================
+# JOIN Path Definitions
+# Explicit join conditions between views.
+# For Contract Hierarchy domain: no joins needed (single denormalized view).
+# This file is ready for future domains (Employee, Hours, etc.)
+# ============================================================
+
+joins: []
+  # Future example:
+  # - from_view: DIMHISTORYEMPLOYEE_V
+  #   to_view: DIMFINANCEBUSINESSSTRUCTURE_V
+  #   condition: "e.COSTCENTER = b.COSTCENTER"
+  #   type: INNER
+  #   description: "Employee to org structure via cost center"

@@ -1,0 +1,24 @@
+# ============================================================
+# Security Roles — User → Authorized Resources
+# Defines which stations/customers/contracts each user can access.
+# In production, this syncs from Azure AD groups.
+# ============================================================
+
+roles:
+  - user_id: demo_user
+    email: demo@unifi.com
+    authorized_stations: [ATL, MSP, JFK, LAX, LAS, DTW, DFW, ORD, DEN, SEA]
+    authorized_customers: [Delta, Alaska, United, American, Southwest]
+    description: "Demo user with broad access for POC"
+
+  - user_id: station_manager_atl
+    email: manager_atl@unifi.com
+    authorized_stations: [ATL]
+    authorized_customers: [Delta, Alaska]
+    description: "ATL station manager — limited to ATL contracts"
+
+  - user_id: regional_manager_central
+    email: rm_central@unifi.com
+    authorized_stations: [ATL, MSP, DTW, ORD]
+    authorized_customers: [Delta, Alaska, United, American, Southwest]
+    description: "Central region manager"

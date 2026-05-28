@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unifi KPI Ontology-Enabled Chatbot</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #202124;
+            --text-muted: #5f6368;
+            --border: #e0e0e0;
+            --success: #34a853;
+            --error: #ea4335;
+            --warning: #fbbc04;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        header { background: var(--primary); color: white; padding: 16px 0; margin-bottom: 24px; }
+        header .container { display: flex; align-items: center; justify-content: space-between; }
+        header h1 { font-size: 20px; font-weight: 600; }
+        header .badge { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+
+        .architecture-flow {
+            display: flex; gap: 8px; align-items: center; justify-content: center;
+            margin-bottom: 24px; flex-wrap: wrap;
+        }
+        .arch-step {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 10px 14px; font-size: 13px; text-align: center; min-width: 110px;
+        }
+        .arch-step.active { border-color: var(--primary); background: #e8f0fe; }
+        .arch-arrow { color: var(--text-muted); font-size: 18px; }
+
+        .input-section {
+            background: var(--card-bg); border-radius: 12px; padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        .input-row { display: flex; gap: 10px; }
+        .input-row input {
+            flex: 1; padding: 12px 16px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 15px; outline: none;
+        }
+        .input-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+        .input-row button {
+            background: var(--primary); color: white; border: none; border-radius: 8px;
+            padding: 12px 28px; font-size: 15px; cursor: pointer; font-weight: 600;
+        }
+        .input-row button:hover { background: var(--primary-dark); }
+        .input-row button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .example-btn {
+            background: #f1f3f4; border: 1px solid var(--border); border-radius: 20px;
+            padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--text);
+        }
+        .example-btn:hover { background: #e8f0fe; border-color: var(--primary); }
+
+        .results { display: none; }
+        .results.visible { display: block; }
+
+        .result-card {
+            background: var(--card-bg); border-radius: 12px; padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;
+        }
+        .result-card h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .answer-text { font-size: 18px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+        .kpi-badge { display: inline-block; background: #e8f0fe; color: var(--primary); padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-passed { color: var(--success); }
+        .status-failed { color: var(--error); }
+
+        .sql-block {
+            background: #1e1e1e; color: #d4d4d4; border-radius: 8px;
+            padding: 16px; font-family: 'Consolas', monospace; font-size: 13px;
+            overflow-x: auto; white-space: pre-wrap; line-height: 1.5;
+        }
+
+        .data-table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+            margin-top: 10px;
+        }
+        .data-table th {
+            background: #f1f3f4; padding: 8px 12px; text-align: left;
+            border-bottom: 2px solid var(--border); font-weight: 600; font-size: 12px;
+        }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+        .data-table tr:hover { background: #f8f9fa; }
+
+        .latency-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+        .latency-item { font-size: 12px; color: var(--text-muted); }
+        .latency-item strong { color: var(--text); }
+
+        .pipeline-steps {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px; margin-top: 10px;
+        }
+        .step-card {
+            border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px;
+        }
+        .step-card .step-title { font-weight: 600; margin-bottom: 4px; }
+        .step-card .step-detail { color: var(--text-muted); font-size: 12px; word-break: break-all; }
+
+        .loading { text-align: center; padding: 30px; color: var(--text-muted); }
+        .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Unifi KPI Ontology-Enabled Chatbot</h1>
+            <span class="badge">Neo4j + Azure OpenAI + Snowflake</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="architecture-flow" id="archFlow">
+            <div class="arch-step" id="step-extract">1. Intent<br>Extraction</div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-step" id="step-neo4j">2. Neo4j<br>Lookup</div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-step" id="step-context">3. Context<br>Builder</div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-step" id="step-llm">4. LLM SQL<br>Generator</div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-step" id="step-validate">5. SQL<br>Validator</div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-step" id="step-execute">6. Snowflake<br>Executor</div>
+        </div>
+
+        <div class="input-section">
+            <div class="input-row">
+                <input type="text" id="questionInput" placeholder="Ask about contracts, stations, customers, hierarchy..." autofocus>
+                <button id="askBtn" onclick="askQuestion()">Ask</button>
+            </div>
+            <div class="examples" id="examples"></div>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display:none">
+            <div class="spinner"></div>
+            <p style="margin-top:10px">Processing through pipeline...</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-card">
+                <h3>Answer</h3>
+                <div class="answer-text" id="answerText"></div>
+                <div id="kpiBadge" style="margin-top:6px"></div>
+            </div>
+
+            <div class="result-card" id="dataCard" style="display:none">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+                    <h3 style="margin:0">Query Results</h3>
+                    <button id="downloadBtn" style="display:none;background:#34a853;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer" onclick="downloadCSV()">
+                        &#8595; Download Full CSV
+                    </button>
+                </div>
+                <div id="previewNote" style="display:none;font-size:12px;color:#5f6368;margin-bottom:8px"></div>
+                <div style="overflow-x:auto" id="dataTableContainer"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Generated SQL</h3>
+                <pre class="sql-block" id="sqlBlock"></pre>
+            </div>
+
+            <div class="result-card">
+                <h3>Validation</h3>
+                <div id="validationResult"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Pipeline Steps</h3>
+                <div class="pipeline-steps" id="pipelineSteps"></div>
+                <div class="latency-bar" id="latencyBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        document.addEventListener('DOMContentLoaded', loadExamples);
+        document.getElementById('questionInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') askQuestion();
+        });
+
+        async function loadExamples() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/v1/examples`);
+                const data = await resp.json();
+                const container = document.getElementById('examples');
+                container.innerHTML = '';
+                data.examples.forEach(ex => {
+                    const btn = document.createElement('button');
+                    btn.className = 'example-btn';
+                    btn.textContent = ex.question;
+                    btn.addEventListener('click', () => {
+                        document.getElementById('questionInput').value = ex.question;
+                        askQuestion();
+                    });
+                    container.appendChild(btn);
+                });
+            } catch (e) {
+                console.error('Failed to load examples:', e);
+            }
+        }
+
+        async function askQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            document.getElementById('askBtn').disabled = true;
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('results').classList.remove('visible');
+            resetArchSteps();
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/v1/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question }),
+                });
+                const data = await resp.json();
+                renderResults(data);
+            } catch (e) {
+                document.getElementById('answerText').textContent = 'Error: ' + e.message;
+                document.getElementById('results').classList.add('visible');
+            } finally {
+                document.getElementById('askBtn').disabled = false;
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        function renderResults(data) {
+            // Answer
+            document.getElementById('answerText').textContent = data.answer || 'No answer';
+            document.getElementById('kpiBadge').innerHTML = data.detected_kpi
+                ? `<span class="kpi-badge">${data.detected_kpi}</span>` : '';
+
+            // SQL
+            document.getElementById('sqlBlock').textContent = data.sql || 'No SQL generated';
+
+            // Validation
+            const valDiv = document.getElementById('validationResult');
+            if (data.validation && data.validation.status) {
+                const statusClass = data.validation.status === 'passed' ? 'status-passed' : 'status-failed';
+                let html = `<strong class="${statusClass}">${data.validation.status.toUpperCase()}</strong>`;
+                if (data.validation.checks) {
+                    html += '<ul style="margin-top:6px;font-size:13px;list-style:none">';
+                    data.validation.checks.forEach(c => {
+                        const icon = c.status === 'passed' ? '&#10003;' : c.status === 'warning' ? '&#9888;' : '&#10007;';
+                        html += `<li>${icon} ${c.check} ${c.detail || ''}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                if (data.validation.errors && data.validation.errors.length) {
+                    html += '<div style="color:var(--error);margin-top:6px;font-size:13px">';
+                    data.validation.errors.forEach(e => { html += `<div>${e}</div>`; });
+                    html += '</div>';
+                }
+                valDiv.innerHTML = html;
+            } else {
+                valDiv.textContent = 'N/A';
+            }
+
+            // Data table
+            const dataCard = document.getElementById('dataCard');
+            const dataContainer = document.getElementById('dataTableContainer');
+            if (data.execution && data.execution.rows && data.execution.rows.length > 0) {
+                dataCard.style.display = 'block';
+                const rows = data.execution.rows;
+                const cols = data.execution.columns || Object.keys(rows[0]);
+                let html = '<table class="data-table"><thead><tr>';
+                cols.forEach(c => { html += `<th>${c}</th>`; });
+                html += '</tr></thead><tbody>';
+                rows.slice(0, 50).forEach(row => {
+                    html += '<tr>';
+                    cols.forEach(c => { html += `<td>${row[c] != null ? row[c] : ''}</td>`; });
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                if (rows.length > 50) html += `<p style="font-size:12px;color:var(--text-muted);margin-top:8px">Showing 50 of ${data.execution.row_count} rows</p>`;
+                dataContainer.innerHTML = html;
+            } else {
+                dataCard.style.display = 'none';
+            }
+
+            // Pipeline steps
+            const stepsDiv = document.getElementById('pipelineSteps');
+            let stepsHtml = '';
+            if (data.extraction) {
+                stepsHtml += `<div class="step-card"><div class="step-title">1. Extraction</div>
+                    <div class="step-detail">KPI: ${data.detected_kpi || 'none'}<br>
+                    Terms: ${JSON.stringify(data.extraction.detected_terms || {})}</div></div>`;
+            }
+            if (data.neo4j_context && data.neo4j_context.kpi_id) {
+                stepsHtml += `<div class="step-card"><div class="step-title">2. Neo4j Lookup</div>
+                    <div class="step-detail">ID: ${data.neo4j_context.kpi_id}<br>
+                    Views: ${(data.neo4j_context.views||[]).join(', ')}<br>Steps: ${data.neo4j_context.steps}</div></div>`;
+            }
+            if (data.structured_context && data.structured_context.kpi) {
+                stepsHtml += `<div class="step-card"><div class="step-title">3. Context</div>
+                    <div class="step-detail">Filters: ${(data.structured_context.filters||[]).join(', ') || 'none'}</div></div>`;
+            }
+            stepsDiv.innerHTML = stepsHtml;
+
+            // Latency
+            const latencyBar = document.getElementById('latencyBar');
+            if (data.latency_ms) {
+                let html = '';
+                for (const [k, v] of Object.entries(data.latency_ms)) {
+                    html += `<div class="latency-item"><strong>${v}ms</strong> ${k.replace('_ms','')}</div>`;
+                }
+                latencyBar.innerHTML = html;
+            }
+
+            // Download CSV button
+            const downloadBtn = document.getElementById('downloadBtn');
+            const previewNote = document.getElementById('previewNote');
+            if (data.has_more && data.sql) {
+                window._lastSql = data.sql;
+                window._lastKpi = data.detected_kpi || 'export';
+                window._lastView = (data.neo4j_context && data.neo4j_context.views && data.neo4j_context.views[0]) || 'DIMFINANCEBUSINESSSTRUCTURE_V';
+                downloadBtn.style.display = 'inline-block';
+                previewNote.style.display = 'block';
+                previewNote.textContent = 'Showing first 50 rows. More results available — download the full dataset as CSV.';
+            } else {
+                downloadBtn.style.display = 'none';
+                previewNote.style.display = 'none';
+            }
+
+            // Highlight architecture steps
+            highlightArchSteps(data);
+            document.getElementById('results').classList.add('visible');
+        }
+
+        async function downloadCSV() {
+            const btn = document.getElementById('downloadBtn');
+            const origText = btn.textContent;
+            btn.textContent = 'Preparing...';
+            btn.disabled = true;
+            try {
+                const kpiName = (window._lastKpi || 'export').toLowerCase().replace(/\s+/g, '_');
+                const filename = `${kpiName}_${new Date().toISOString().slice(0,10)}.csv`;
+                const resp = await fetch(`${API_BASE}/api/v1/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sql: window._lastSql,
+                        filename: filename,
+                        kpi_name: window._lastKpi || 'export',
+                        view_name: window._lastView || 'DIMFINANCEBUSINESSSTRUCTURE_V'
+                    }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert('Download failed: ' + JSON.stringify(err.detail));
+                    return;
+                }
+                const rowCount = resp.headers.get('X-Row-Count') || '?';
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; a.click();
+                URL.revokeObjectURL(url);
+                btn.textContent = `Downloaded (${rowCount} rows)`;
+            } catch(e) {
+                alert('Download error: ' + e.message);
+                btn.textContent = origText;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function resetArchSteps() {
+            document.querySelectorAll('.arch-step').forEach(el => el.classList.remove('active'));
+        }
+
+        function highlightArchSteps(data) {
+            if (data.extraction) document.getElementById('step-extract').classList.add('active');
+            if (data.neo4j_context && data.neo4j_context.kpi_id) document.getElementById('step-neo4j').classList.add('active');
+            if (data.structured_context && data.structured_context.kpi) document.getElementById('step-context').classList.add('active');
+            if (data.sql) document.getElementById('step-llm').classList.add('active');
+            if (data.validation && data.validation.status) document.getElementById('step-validate').classList.add('active');
+            if (data.execution && data.execution.rows) document.getElementById('step-execute').classList.add('active');
+        }
+    </script>
+</body>
+</html>

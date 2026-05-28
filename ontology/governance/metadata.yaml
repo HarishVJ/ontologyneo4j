@@ -1,0 +1,57 @@
+# ============================================================
+# Ontology Governance Metadata
+# Tracks versioning, ownership, and approval status.
+# ============================================================
+
+ontology:
+  name: "Unifi KPI Ontology"
+  version: "1.0.0"
+  description: "Neo4j-powered ontology for NL2SQL workforce analytics"
+  created: "2026-05-28"
+  last_modified: "2026-05-28"
+  status: active
+
+owners:
+  - name: "Data Engineering Team"
+    role: maintainer
+    responsibility: "Schema sync, view updates, column additions"
+  - name: "Business Analytics Team"
+    role: contributor
+    responsibility: "KPI recipe definitions, business rules"
+  - name: "Platform Team"
+    role: approver
+    responsibility: "Release approval, governance enforcement"
+
+change_process:
+  - step: 1
+    action: "Define change in YAML file"
+    responsible: contributor
+  - step: 2
+    action: "Run ontology validator (scripts/validate_ontology.py)"
+    responsible: contributor
+  - step: 3
+    action: "Run golden tests to verify no regression"
+    responsible: contributor
+  - step: 4
+    action: "Peer review YAML diff"
+    responsible: maintainer
+  - step: 5
+    action: "Approval"
+    responsible: approver
+  - step: 6
+    action: "Load to Neo4j (scripts/seed_ontology.py)"
+    responsible: maintainer
+  - step: 7
+    action: "Verify in staging"
+    responsible: maintainer
+
+versioning:
+  strategy: "Semantic versioning on ontology. Individual KPI nodes carry valid_from/valid_to."
+  fields:
+    - version
+    - valid_from
+    - valid_to
+    - status  # active | deprecated | draft
+    - owner
+    - approved_by
+    - approved_at
