@@ -121,13 +121,19 @@ def extract(question: str) -> ExtractionResult:
             )
             break
 
-    # 3. Detect customers
+    # 3. Detect customers (skip if a station was already matched on same token)
+    detected_station_values = {t.value for t in result.detected_terms.values() if t.category == "station"}
     for name, canonical in sorted(CUSTOMERS.items(), key=lambda x: len(x[0]), reverse=True):
         if name in q_lower:
-            result.detected_terms[canonical] = DetectedTerm(
-                category="customer", value=canonical, column="CUSTOMERNAME"
-            )
-            break
+            # Avoid false match: don't match a customer whose name CONTAINS a matched station code
+            if any(st in name.upper() for st in detected_station_values):
+                continue
+            # Require the match to be a word boundary (not a substring of a word)
+            if re.search(rf"\b{re.escape(name)}\b", q_lower):
+                result.detected_terms[canonical] = DetectedTerm(
+                    category="customer", value=canonical, column="CUSTOMERNAME"
+                )
+                break
 
     # 4. Detect regions
     for name, canonical in sorted(REGIONS.items(), key=lambda x: len(x[0]), reverse=True):
@@ -154,8 +160,12 @@ def extract(question: str) -> ExtractionResult:
             break
 
     # 7a. Detect attrition period terms (longest match first → SQL filter)
+    # Also handle common typos via simple normalization
+    _q_normalized = re.sub(r"quater\b", "quarter", q_lower)   # quater → quarter
+    _q_normalized = re.sub(r"yr\b", "year", _q_normalized)    # yr → year
+    _q_normalized = re.sub(r"\bprevious\b", "last", _q_normalized)  # previous → last
     for phrase, sql_filter in sorted(ATTRITION_PERIODS.items(), key=lambda x: len(x[0]), reverse=True):
-        if phrase in q_lower:
+        if phrase in q_lower or phrase in _q_normalized:
             result.detected_terms[f"PERIOD_{phrase.replace(' ', '_').upper()}"] = DetectedTerm(
                 category="attrition_period", value=sql_filter, column="DATE"
             )
