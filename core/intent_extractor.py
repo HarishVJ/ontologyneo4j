@@ -6,6 +6,7 @@ All term knowledge is loaded from Neo4j at startup — no hardcoded values.
 """
 
 import re
+from rapidfuzz import process as fz_process, fuzz
 from core.models import ExtractionResult, DetectedTerm
 from core.neo4j_client import execute_query
 from config.logging_config import get_logger
@@ -22,6 +23,41 @@ KPI_SYNONYMS: dict[str, tuple[str, str]] = {}  # lowercase phrase → (canonical
 ATTRITION_PERIODS: dict[str, str] = {}  # lowercase phrase → SQL date filter string
 
 _terms_loaded = False
+
+# Fuzzy match thresholds — tuned per category to balance recall vs. false positives
+FUZZY_KPI_THRESHOLD = 78       # KPI synonym phrases embedded in longer sentences
+FUZZY_PERIOD_THRESHOLD = 85    # Period terms (short, need precision)
+FUZZY_ENTITY_THRESHOLD = 80    # Customer / region / division names
+# Station codes (3-4 chars) are always exact — fuzzy too risky (ATL vs ATS)
+
+
+def _fuzzy_find(query: str, candidates: list[str], threshold: int) -> str | None:
+    """
+    Return the best fuzzy match from candidates for query, or None if below threshold.
+    Uses partial_ratio for short phrases inside longer sentences (KPI/period detection)
+    and token_set_ratio for entity names.
+    """
+    if not candidates:
+        return None
+    result = fz_process.extractOne(
+        query, candidates,
+        scorer=fuzz.partial_ratio,
+        score_cutoff=threshold,
+    )
+    return result[0] if result else None
+
+
+def _fuzzy_find_entity(query: str, candidates: list[str], threshold: int) -> str | None:
+    """Token-set ratio for multi-word entity names (customers, regions, divisions)."""
+    if not candidates:
+        return None
+    result = fz_process.extractOne(
+        query, candidates,
+        scorer=fuzz.token_set_ratio,
+        score_cutoff=threshold,
+    )
+    return result[0] if result else None
+
 
 # Period detection patterns
 PERIOD_PATTERNS = [
@@ -102,15 +138,36 @@ def extract(question: str) -> ExtractionResult:
     q_lower = question.lower()
     result = ExtractionResult(original_question=question)
 
-    # 1. Detect KPI — match longest synonym first
+    # 1. Detect KPI — collect exact matches (all of them), then fuzzy candidates,
+    #    pick winner by (score DESC, phrase_length DESC) so longer phrases beat
+    #    short exact matches like 'cost center' when a better typo match exists.
     if KPI_SYNONYMS:
-        for phrase, (canonical, kpi_id) in sorted(
-            KPI_SYNONYMS.items(), key=lambda x: len(x[0]), reverse=True
-        ):
+        kpi_phrases = list(KPI_SYNONYMS.keys())
+        candidates: list[tuple[str, float]] = []
+
+        # Exact matches get score 100
+        for phrase in kpi_phrases:
             if phrase in q_lower:
-                result.detected_kpi = canonical
-                result.detected_kpi_id = kpi_id
-                break
+                candidates.append((phrase, 100.0))
+
+        # Fuzzy matches (may score higher combined with length tie-breaking)
+        fuzzy_matches = fz_process.extract(
+            q_lower, kpi_phrases,
+            scorer=fuzz.partial_ratio,
+            score_cutoff=FUZZY_KPI_THRESHOLD,
+            limit=10,
+        )
+        for phrase, score, _ in fuzzy_matches:
+            if phrase not in [c[0] for c in candidates]:
+                candidates.append((phrase, float(score)))
+
+        if candidates:
+            # Sort by (score DESC, phrase_length DESC) — longer phrase wins ties
+            best_phrase = sorted(candidates, key=lambda x: (x[1], len(x[0])), reverse=True)[0][0]
+            canonical, kpi_id = KPI_SYNONYMS[best_phrase]
+            result.detected_kpi = canonical
+            result.detected_kpi_id = kpi_id
+            logger.debug("kpi_matched", query=q_lower, matched=best_phrase)
 
     # 2. Detect stations (case-insensitive word match against uppercase codes)
     words = re.findall(r"\b[A-Za-z]{2,4}\b", question)
@@ -121,56 +178,99 @@ def extract(question: str) -> ExtractionResult:
             )
             break
 
-    # 3. Detect customers (skip if a station was already matched on same token)
+    # 3. Detect customers — exact first, then fuzzy fallback
     detected_station_values = {t.value for t in result.detected_terms.values() if t.category == "station"}
+    matched_customer = False
     for name, canonical in sorted(CUSTOMERS.items(), key=lambda x: len(x[0]), reverse=True):
         if name in q_lower:
-            # Avoid false match: don't match a customer whose name CONTAINS a matched station code
             if any(st in name.upper() for st in detected_station_values):
                 continue
-            # Require the match to be a word boundary (not a substring of a word)
             if re.search(rf"\b{re.escape(name)}\b", q_lower):
                 result.detected_terms[canonical] = DetectedTerm(
                     category="customer", value=canonical, column="CUSTOMERNAME"
                 )
+                matched_customer = True
                 break
+    if not matched_customer:
+        best = _fuzzy_find_entity(q_lower, list(CUSTOMERS.keys()), FUZZY_ENTITY_THRESHOLD)
+        if best and not any(st in best.upper() for st in detected_station_values):
+            canonical = CUSTOMERS[best]
+            result.detected_terms[canonical] = DetectedTerm(
+                category="customer", value=canonical, column="CUSTOMERNAME"
+            )
+            logger.debug("customer_fuzzy_matched", query=q_lower, matched=best)
 
-    # 4. Detect regions
+    # 4. Detect regions — exact then fuzzy
+    matched_region = False
     for name, canonical in sorted(REGIONS.items(), key=lambda x: len(x[0]), reverse=True):
         if name in q_lower:
             result.detected_terms[canonical] = DetectedTerm(
                 category="region", value=canonical, column="GRANDPARENTREGIONNAME"
             )
+            matched_region = True
             break
+    if not matched_region:
+        best = _fuzzy_find_entity(q_lower, list(REGIONS.keys()), FUZZY_ENTITY_THRESHOLD)
+        if best:
+            result.detected_terms[REGIONS[best]] = DetectedTerm(
+                category="region", value=REGIONS[best], column="GRANDPARENTREGIONNAME"
+            )
+            logger.debug("region_fuzzy_matched", query=q_lower, matched=best)
 
-    # 5. Detect divisions
+    # 5. Detect divisions — exact then fuzzy
+    matched_division = False
     for name, canonical in sorted(DIVISIONS.items(), key=lambda x: len(x[0]), reverse=True):
         if name in q_lower:
             result.detected_terms[canonical] = DetectedTerm(
                 category="division", value=canonical, column="DIVISIONNAME"
             )
+            matched_division = True
             break
+    if not matched_division:
+        best = _fuzzy_find_entity(q_lower, list(DIVISIONS.keys()), FUZZY_ENTITY_THRESHOLD)
+        if best:
+            result.detected_terms[DIVISIONS[best]] = DetectedTerm(
+                category="division", value=DIVISIONS[best], column="DIVISIONNAME"
+            )
+            logger.debug("division_fuzzy_matched", query=q_lower, matched=best)
 
-    # 6. Detect entities
+    # 6. Detect entities — exact then fuzzy
+    matched_entity = False
     for name, canonical in sorted(ENTITIES.items(), key=lambda x: len(x[0]), reverse=True):
         if name in q_lower:
             result.detected_terms[canonical] = DetectedTerm(
                 category="entity", value=canonical, column="ENTITYDESCRIPTION"
             )
+            matched_entity = True
             break
+    if not matched_entity:
+        best = _fuzzy_find_entity(q_lower, list(ENTITIES.keys()), FUZZY_ENTITY_THRESHOLD)
+        if best:
+            result.detected_terms[ENTITIES[best]] = DetectedTerm(
+                category="entity", value=ENTITIES[best], column="ENTITYDESCRIPTION"
+            )
+            logger.debug("entity_fuzzy_matched", query=q_lower, matched=best)
 
-    # 7a. Detect attrition period terms (longest match first → SQL filter)
-    # Also handle common typos via simple normalization
-    _q_normalized = re.sub(r"quater\b", "quarter", q_lower)   # quater → quarter
-    _q_normalized = re.sub(r"yr\b", "year", _q_normalized)    # yr → year
-    _q_normalized = re.sub(r"\bprevious\b", "last", _q_normalized)  # previous → last
+    # 7a. Detect attrition period terms — exact first, then fuzzy fallback
+    matched_period = False
+    period_phrases = list(ATTRITION_PERIODS.keys())
     for phrase, sql_filter in sorted(ATTRITION_PERIODS.items(), key=lambda x: len(x[0]), reverse=True):
-        if phrase in q_lower or phrase in _q_normalized:
+        if phrase in q_lower:
             result.detected_terms[f"PERIOD_{phrase.replace(' ', '_').upper()}"] = DetectedTerm(
                 category="attrition_period", value=sql_filter, column="DATE"
             )
             result.detected_period = phrase
+            matched_period = True
             break
+    if not matched_period and period_phrases:
+        best = _fuzzy_find(q_lower, period_phrases, FUZZY_PERIOD_THRESHOLD)
+        if best:
+            sql_filter = ATTRITION_PERIODS[best]
+            result.detected_terms[f"PERIOD_{best.replace(' ', '_').upper()}"] = DetectedTerm(
+                category="attrition_period", value=sql_filter, column="DATE"
+            )
+            result.detected_period = best
+            logger.debug("period_fuzzy_matched", query=q_lower, matched=best)
 
     # 7b. Detect generic period patterns (fallback)
     if not result.detected_period:

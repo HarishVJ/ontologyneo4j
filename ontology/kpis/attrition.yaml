@@ -117,6 +117,9 @@ kpis:
       - "attrition detail"
       - "attrition rate breakdown"
       - "show attrition by cost center"
+      - "attrition breakdown cost center"
+      - "attrition brekdown"
+      - "attrition brakdown"
     version: "1.0"
     status: active
     owner: data_team
