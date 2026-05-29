@@ -38,13 +38,14 @@ def _load_views() -> int:
     with driver.session() as session:
         for view in data.get("views", []):
             columns = [c["name"] for c in view.get("columns", [])]
+            aliases = view.get("approved_aliases", [])
             session.run(
                 "MERGE (v:View {name: $name}) "
                 "SET v.schema=$schema, v.alias=$alias, v.description=$desc, "
-                "v.columns=$columns, v.column_count=$cc",
+                "v.columns=$columns, v.column_count=$cc, v.approved_aliases=$aliases",
                 {"name": view["name"], "schema": view.get("schema",""),
                  "alias": view.get("alias",""), "desc": view.get("description",""),
-                 "columns": columns, "cc": len(columns)},
+                 "columns": columns, "cc": len(columns), "aliases": aliases},
             )
             count += 1
     logger.info("views_loaded", count=count)

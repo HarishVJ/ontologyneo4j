@@ -70,6 +70,7 @@ class ViewMetadata:
     schema: str
     alias: str
     columns: list[str] = field(default_factory=list)
+    approved_aliases: list[str] = field(default_factory=list)
 
 
 @dataclass

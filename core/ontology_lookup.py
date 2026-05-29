@@ -82,7 +82,8 @@ def get_view_metadata(view_name: str) -> ViewMetadata | None:
     records = execute_query(
         """
         MATCH (v:View {name: $name})
-        RETURN v.name AS name, v.schema AS schema, v.alias AS alias, v.columns AS columns
+        RETURN v.name AS name, v.schema AS schema, v.alias AS alias,
+               v.columns AS columns, v.approved_aliases AS approved_aliases
         """,
         {"name": view_name},
     )
@@ -96,6 +97,7 @@ def get_view_metadata(view_name: str) -> ViewMetadata | None:
         schema=row.get("schema", ""),
         alias=row.get("alias", ""),
         columns=row.get("columns", []),
+        approved_aliases=row.get("approved_aliases", []),
     )
 
 

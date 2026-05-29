@@ -48,3 +48,22 @@ views:
       - { name: DISPLAYNAME, type: VARCHAR(1000), description: "Formatted display name" }
       - { name: COSTCENTER, type: VARCHAR(10), description: "Cost center code" }
       - { name: ENTITY_STATION, type: VARCHAR(100), description: "Entity-station composite key" }
+
+  - name: AGGEMPCOUNT_ATTRITION_DATA_V
+    schema: AIRCO_EDW_UAT.ILINKAICHAT
+    alias: a
+    description: "Pre-aggregated headcount and termination counts by station and cost center over time. Used for attrition/turnover analytics."
+    approved_aliases:
+      - ATTRITION_RATE_PCT
+      - TOTAL_TERMINATIONS
+      - TOTAL_HEADCOUNT
+      - DAYS_IN_PERIOD
+      - PERIOD_START
+      - PERIOD_END
+      - ANNUALIZED_RATE
+    columns:
+      - { name: DATE,                          type: DATE,         description: "Reporting date — grain key" }
+      - { name: STATIONCODE,                   type: VARCHAR(10),  description: "Station/site code (e.g. ATL, MSP)" }
+      - { name: COSTCENTER,                    type: VARCHAR(10),  description: "Cost center code" }
+      - { name: EMPLOYEE_HEADCOUNT_ATTRITION,  type: NUMBER(14,0), description: "Active + inactive headcount — attrition denominator" }
+      - { name: TOTAL_TERMINATION,             type: NUMBER(15,0), description: "Hard + soft terminations combined — attrition numerator" }

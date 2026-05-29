@@ -111,3 +111,65 @@ categories:
       - { code: "which region", canonical: "Hierarchy Lookup" }
       - { code: "hierarchy", canonical: "Hierarchy Lookup" }
       - { code: "org structure", canonical: "Hierarchy Lookup" }
+      # Attrition KPI synonyms
+      - { code: "attrition rate", canonical: "Attrition Rate" }
+      - { code: "attrition", canonical: "Attrition Rate" }
+      - { code: "turnover rate", canonical: "Attrition Rate" }
+      - { code: "turnover", canonical: "Attrition Rate" }
+      - { code: "termination rate", canonical: "Attrition Rate" }
+      - { code: "how many left", canonical: "Attrition Rate" }
+      - { code: "who left", canonical: "Attrition Rate" }
+      - { code: "employees left", canonical: "Attrition Rate" }
+      - { code: "attrition by station", canonical: "Attrition Rate" }
+      - { code: "detailed attrition", canonical: "Attrition Rate Detail" }
+      - { code: "attrition breakdown", canonical: "Attrition Rate Detail" }
+      - { code: "attrition by cost center", canonical: "Attrition Rate Detail" }
+      - { code: "turnover breakdown", canonical: "Attrition Rate Detail" }
+      - { code: "attrition detail", canonical: "Attrition Rate Detail" }
+
+  - name: attrition_period
+    column: DATE
+    description: "Time period terms for attrition queries — mapped to Snowflake DATE filter SQL"
+    terms:
+      - code: "this month"
+        canonical: "This Month"
+        context: "DATE >= DATE_TRUNC('month', CURRENT_DATE)"
+      - code: "current month"
+        canonical: "This Month"
+        context: "DATE >= DATE_TRUNC('month', CURRENT_DATE)"
+      - code: "last month"
+        canonical: "Last Month"
+        context: "DATE >= DATEADD(month, -1, DATE_TRUNC('month', CURRENT_DATE)) AND DATE < DATE_TRUNC('month', CURRENT_DATE)"
+      - code: "previous month"
+        canonical: "Last Month"
+        context: "DATE >= DATEADD(month, -1, DATE_TRUNC('month', CURRENT_DATE)) AND DATE < DATE_TRUNC('month', CURRENT_DATE)"
+      - code: "ytd"
+        canonical: "Year To Date"
+        context: "DATE >= DATE_TRUNC('year', CURRENT_DATE)"
+      - code: "year to date"
+        canonical: "Year To Date"
+        context: "DATE >= DATE_TRUNC('year', CURRENT_DATE)"
+      - code: "this year"
+        canonical: "Year To Date"
+        context: "DATE >= DATE_TRUNC('year', CURRENT_DATE)"
+      - code: "last 90 days"
+        canonical: "Last 90 Days"
+        context: "DATE >= DATEADD(day, -90, CURRENT_DATE)"
+      - code: "last 30 days"
+        canonical: "Last 30 Days"
+        context: "DATE >= DATEADD(day, -30, CURRENT_DATE)"
+      - code: "last quarter"
+        canonical: "Last Quarter"
+        context: "DATE >= DATEADD(quarter, -1, DATE_TRUNC('quarter', CURRENT_DATE)) AND DATE < DATE_TRUNC('quarter', CURRENT_DATE)"
+      - code: "q1"
+        canonical: "Q1"
+        context: "MONTH(DATE) IN (1, 2, 3) AND YEAR(DATE) = YEAR(CURRENT_DATE)"
+      - code: "q2"
+        canonical: "Q2"
+        context: "MONTH(DATE) IN (4, 5, 6) AND YEAR(DATE) = YEAR(CURRENT_DATE)"
+      - code: "q3"
+        canonical: "Q3"
+        context: "MONTH(DATE) IN (7, 8, 9) AND YEAR(DATE) = YEAR(CURRENT_DATE)"
+      - code: "q4"
+        canonical: "Q4"
+        context: "MONTH(DATE) IN (10, 11, 12) AND YEAR(DATE) = YEAR(CURRENT_DATE)"

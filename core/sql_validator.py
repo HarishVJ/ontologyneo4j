@@ -74,10 +74,20 @@ def validate_sql(
     for view in context.views:
         for col in view.get("columns", []):
             approved_columns.add(col.upper())
-    # Add common SQL aliases and aggregate output names
+        # Include computed/alias names defined per-view (e.g. ATTRITION_RATE_PCT)
+        for alias in view.get("approved_aliases", []):
+            approved_columns.add(alias.upper())
+    # Common SQL aliases and aggregate output names
     approved_columns.update({
         "CONTRACT_COUNT", "STATION_COUNT", "CUSTOMER_COUNT", "CNT", "TOTAL",
         "COUNT(DISTINCT", "DISTINCT", "B", "AS",
+        # Attrition computed columns (fallback if not in view aliases)
+        "ATTRITION_RATE_PCT", "TOTAL_TERMINATIONS", "TOTAL_HEADCOUNT",
+        "DAYS_IN_PERIOD", "PERIOD_START", "PERIOD_END", "ANNUALIZED_RATE",
+        "EMPLOYEE_HEADCOUNT_ATTRITION", "TOTAL_TERMINATION",
+        # CTE common names
+        "TERMINATIONS", "HEADCOUNT", "RATE", "ATTRITION_RATE",
+        "PERIOD_BOUNDS", "PERIOD_DAYS", "DATEDIFF", "DATEADD", "DATE_TRUNC",
     })
 
     referenced_cols = _extract_column_references(sql)

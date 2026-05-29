@@ -30,6 +30,7 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                 "alias": meta.alias,
                 "columns": meta.columns,
                 "schema": meta.schema,
+                "approved_aliases": meta.approved_aliases,
             })
         else:
             views_data.append({
@@ -37,6 +38,7 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                 "alias": view_name[0].lower(),
                 "columns": [],
                 "schema": settings.snowflake_schema_prefix,
+                "approved_aliases": [],
             })
 
     # Build filter conditions from extracted terms
@@ -55,6 +57,8 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                 filters.append(f"DIVISIONNAME = '{term.value}'")
             elif term.category == "entity":
                 filters.append(f"ENTITYDESCRIPTION = '{term.value}'")
+            elif term.category == "attrition_period":
+                filters.append(term.value)  # pre-built SQL date filter string
 
     # Build step descriptions
     steps = [f"Step {s.order}: {s.logic}" for s in recipe.steps]

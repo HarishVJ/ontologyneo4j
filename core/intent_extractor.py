@@ -19,6 +19,7 @@ REGIONS: dict[str, str] = {}
 DIVISIONS: dict[str, str] = {}
 ENTITIES: dict[str, str] = {}
 KPI_SYNONYMS: dict[str, tuple[str, str]] = {}  # lowercase phrase → (canonical_name, kpi_id)
+ATTRITION_PERIODS: dict[str, str] = {}  # lowercase phrase → SQL date filter string
 
 _terms_loaded = False
 
@@ -45,12 +46,12 @@ AGGREGATION_PATTERNS = [
 
 def load_terms_from_neo4j() -> None:
     """Load all term categories from Neo4j into in-memory caches."""
-    global STATIONS, CUSTOMERS, REGIONS, DIVISIONS, ENTITIES, KPI_SYNONYMS, _terms_loaded
+    global STATIONS, CUSTOMERS, REGIONS, DIVISIONS, ENTITIES, KPI_SYNONYMS, ATTRITION_PERIODS, _terms_loaded
 
     try:
         records = execute_query(
             "MATCH (t:Term) RETURN t.code AS code, t.canonical AS canonical, "
-            "t.category AS category, t.column AS column, t.kpi_id AS kpi_id"
+            "t.category AS category, t.column AS column, t.kpi_id AS kpi_id, t.context AS context"
         )
 
         for r in records:
@@ -71,6 +72,11 @@ def load_terms_from_neo4j() -> None:
             elif category == "kpi_synonyms":
                 kpi_id = r.get("kpi_id") or ""
                 KPI_SYNONYMS[code.lower()] = (canonical, kpi_id)
+            elif category == "attrition_period":
+                # context field holds the SQL date filter expression
+                sql_filter = r.get("context") or ""
+                if sql_filter:
+                    ATTRITION_PERIODS[code.lower()] = sql_filter
 
         _terms_loaded = True
         logger.info(
@@ -81,6 +87,7 @@ def load_terms_from_neo4j() -> None:
             divisions=len(DIVISIONS),
             entities=len(ENTITIES),
             kpi_synonyms=len(KPI_SYNONYMS),
+            attrition_periods=len(ATTRITION_PERIODS),
         )
     except Exception as e:
         logger.error("term_loading_failed", error=str(e))
@@ -146,12 +153,22 @@ def extract(question: str) -> ExtractionResult:
             )
             break
 
-    # 7. Detect period
-    for pattern, period_type in PERIOD_PATTERNS:
-        match = re.search(pattern, q_lower)
-        if match:
-            result.detected_period = match.group(0)
+    # 7a. Detect attrition period terms (longest match first → SQL filter)
+    for phrase, sql_filter in sorted(ATTRITION_PERIODS.items(), key=lambda x: len(x[0]), reverse=True):
+        if phrase in q_lower:
+            result.detected_terms[f"PERIOD_{phrase.replace(' ', '_').upper()}"] = DetectedTerm(
+                category="attrition_period", value=sql_filter, column="DATE"
+            )
+            result.detected_period = phrase
             break
+
+    # 7b. Detect generic period patterns (fallback)
+    if not result.detected_period:
+        for pattern, period_type in PERIOD_PATTERNS:
+            match = re.search(pattern, q_lower)
+            if match:
+                result.detected_period = match.group(0)
+                break
 
     # 8. Detect aggregation modifiers
     for pattern, agg_type in AGGREGATION_PATTERNS:
