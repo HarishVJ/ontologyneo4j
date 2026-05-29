@@ -4,8 +4,30 @@ Validates BEFORE execution — blocks unsafe queries at the gate.
 """
 
 import re
+import os
+import yaml
 from core.models import ValidationResult, StructuredContext
 from config.logging_config import get_logger
+
+_ROLES_CACHE: dict[str, list[str]] = {}
+
+
+def _get_authorized_stations(user_id: str) -> list[str] | None:
+    """Load authorized stations for user_id from roles.yaml (cached)."""
+    global _ROLES_CACHE
+    if user_id in _ROLES_CACHE:
+        return _ROLES_CACHE[user_id]
+    roles_path = os.path.join(
+        os.path.dirname(__file__), "..", "ontology", "security", "roles.yaml"
+    )
+    try:
+        with open(roles_path, "r") as f:
+            data = yaml.safe_load(f)
+        for role in data.get("roles", []):
+            _ROLES_CACHE[role["user_id"]] = [s.upper() for s in role.get("authorized_stations", [])]
+        return _ROLES_CACHE.get(user_id)
+    except Exception:
+        return None
 
 logger = get_logger(__name__)
 
@@ -103,9 +125,12 @@ def validate_sql(
         checks.append({"check": "column_compliance", "status": "passed"})
 
     # Check 6: Security scope (RLS)
-    if authorized_stations:
+    # Resolve stations: use passed list, or look up from roles.yaml by user_id
+    user_id = getattr(context, "user_id", None) or "demo_user"
+    resolved_stations = authorized_stations or _get_authorized_stations(user_id)
+    if resolved_stations:
         station_refs = _extract_station_filters(sql)
-        unauthorized = [s for s in station_refs if s not in authorized_stations]
+        unauthorized = [s for s in station_refs if s not in resolved_stations]
         if unauthorized:
             checks.append({"check": "security_scope", "status": "failed"})
             errors.append(f"Unauthorized station access: {', '.join(unauthorized)}")
@@ -128,30 +153,49 @@ def _extract_table_references(sql: str) -> list[str]:
 
 
 def _extract_column_references(sql: str) -> list[str]:
-    """Extract column names from SELECT clause."""
+    """Extract top-level column/alias names from SELECT clause only.
+    Skips function internals to avoid false positives from DATEDIFF, ROUND etc.
+    """
     select_match = re.search(r"SELECT\s+(.*?)\s+FROM", sql, re.IGNORECASE | re.DOTALL)
     if not select_match:
         return []
 
-    select_clause = select_match.group(1)
-    # Remove DISTINCT keyword
-    select_clause = re.sub(r"\bDISTINCT\b", "", select_clause, flags=re.IGNORECASE).strip()
-    # Remove aggregation wrappers
-    select_clause = re.sub(r"(COUNT|SUM|AVG|MIN|MAX)\s*\(", "(", select_clause, flags=re.IGNORECASE)
+    select_clause = select_match.group(1).strip()
 
-    # Split by comma and extract column names
+    # Split only on commas that are NOT inside parentheses
+    parts = []
+    depth = 0
+    current = []
+    for ch in select_clause:
+        if ch == "(":
+            depth += 1
+            current.append(ch)
+        elif ch == ")":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        parts.append("".join(current).strip())
+
     cols = []
-    for part in select_clause.split(","):
+    for part in parts:
         part = part.strip()
-        # Remove alias (AS ...)
-        part = re.sub(r"\s+AS\s+\w+", "", part, flags=re.IGNORECASE).strip()
-        # Remove table prefix
-        if "." in part:
-            part = part.split(".")[-1]
-        # Remove parentheses
-        part = part.strip("()")
-        if part and not part.startswith("'") and part != "*":
-            cols.append(part)
+        # Extract the AS alias if present — that's what we care about
+        alias_match = re.search(r"\bAS\s+(\w+)\s*$", part, re.IGNORECASE)
+        if alias_match:
+            cols.append(alias_match.group(1).upper())
+            continue
+        # No alias — extract bare column name (table.COL or COL)
+        # Skip if it's a function call (contains a paren before any plain token)
+        if "(" in part:
+            continue
+        bare = part.split(".")[-1].strip()
+        if bare and bare != "*" and not bare.startswith("'"):
+            cols.append(bare.upper())
 
     return cols
 
