@@ -16,7 +16,7 @@ description: "Annualized employee attrition/turnover rate from pre-aggregated he
 kpis:
   - id: kpi_attrition_rate_simple
     name: "Attrition Rate"
-    description: "Annualized attrition rate = (Total Terminations / Total Headcount) x (365 / Days in Period) x 100. Filtered by station and/or time period."
+    description: "Annualized attrition rate = (Total Terminations / Total Headcount) x (365 / Days in Period) x 100. Supported filters: STATIONCODE and/or COSTCENTER and/or DATE range ONLY. Customer, region, division, and contract dimensions are NOT available in this view and must not be used."
     complexity: medium
     formula: "(SUM(TOTAL_TERMINATION) / NULLIF(SUM(EMPLOYEE_HEADCOUNT_ATTRITION), 0)) * (365.0 / GREATEST(DATEDIFF(day, MIN(DATE), MAX(DATE)), 1)) * 100 AS ATTRITION_RATE_PCT"
     views: [AGGEMPCOUNT_ATTRITION_DATA_V]
@@ -55,8 +55,11 @@ kpis:
       - "who left"
       - "employees left"
       - "attrition by station"
+      - "attrition at station"
       - "what is attrition"
       - "show attrition"
+      - "attrition for cost center"
+      - "turnover for cost center"
     version: "1.0"
     status: active
     owner: data_team
@@ -64,7 +67,7 @@ kpis:
 
   - id: kpi_attrition_rate_detail
     name: "Attrition Rate Detail"
-    description: "Detailed annualized attrition rate broken down by station AND cost center using a multi-step CTE. Includes period bounds, termination counts, headcount, and final rate."
+    description: "Detailed annualized attrition rate broken down by STATIONCODE and/or COSTCENTER using a multi-step CTE. Supported filters: STATIONCODE, COSTCENTER, DATE range ONLY. Customer, region, division, and contract dimensions are NOT available in this view and must not be used. Output columns: STATIONCODE, COSTCENTER, TOTAL_TERMINATIONS, TOTAL_HEADCOUNT, DAYS_IN_PERIOD, ATTRITION_RATE_PCT."
     complexity: very_high
     formula: |
       WITH period_data AS (
@@ -113,6 +116,7 @@ kpis:
       - "detailed attrition"
       - "attrition breakdown"
       - "attrition by cost center"
+      - "attrition by station"
       - "turnover breakdown"
       - "attrition detail"
       - "attrition rate breakdown"
@@ -120,6 +124,8 @@ kpis:
       - "attrition breakdown cost center"
       - "attrition brekdown"
       - "attrition brakdown"
+      - "attrition breakdown by station"
+      - "attrition breakdown by cost center"
     version: "1.0"
     status: active
     owner: data_team

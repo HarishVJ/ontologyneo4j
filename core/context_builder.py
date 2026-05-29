@@ -15,6 +15,16 @@ from config.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+# Columns that exist in AGGEMPCOUNT_ATTRITION_DATA_V only
+_ATTRITION_VIEW = "AGGEMPCOUNT_ATTRITION_DATA_V"
+_ATTRITION_SUPPORTED_FILTER_CATEGORIES = {"station", "costcenter", "attrition_period"}
+_ATTRITION_UNSUPPORTED_LABELS = {
+    "customer": "customer",
+    "region": "region",
+    "division": "division",
+    "entity": "legal entity",
+}
+
 
 def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> StructuredContext:
     """Build structured LLM context from extraction result and KPI recipe."""
@@ -40,6 +50,23 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                 "schema": settings.snowflake_schema_prefix,
                 "approved_aliases": [],
             })
+
+    # Guard: attrition KPIs only support station/costcenter/period filters
+    is_attrition_kpi = _ATTRITION_VIEW in recipe.views
+    if is_attrition_kpi:
+        unsupported = [
+            _ATTRITION_UNSUPPORTED_LABELS[t.category]
+            for t in extraction.detected_terms.values()
+            if t.category in _ATTRITION_UNSUPPORTED_LABELS
+        ]
+        if unsupported:
+            dims = ", ".join(sorted(set(unsupported)))
+            raise ValueError(
+                f"Attrition data is only available at station and cost-center level. "
+                f"Filtering by {dims} is not supported. "
+                f"Try: 'What is the attrition rate at MSP?' or "
+                f"'Show attrition for cost center 641 YTD'."
+            )
 
     # Build filter conditions from extracted terms
     filters = []
