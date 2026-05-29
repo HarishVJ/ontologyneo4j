@@ -7,7 +7,7 @@ golden_tests:
     expected_kpi: "Attrition Rate"
     expected_kpi_id: "kpi_attrition_rate_simple"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "TOTAL_TERMINATION"
       - "EMPLOYEE_HEADCOUNT_ATTRITION"
       - "MSP"
@@ -19,7 +19,7 @@ golden_tests:
     expected_kpi: "Attrition Rate"
     expected_kpi_id: "kpi_attrition_rate_simple"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "TOTAL_TERMINATION"
       - "EMPLOYEE_HEADCOUNT_ATTRITION"
       - "DATE_TRUNC"
@@ -30,7 +30,7 @@ golden_tests:
     expected_kpi: "Attrition Rate"
     expected_kpi_id: "kpi_attrition_rate_simple"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "DATEADD"
       - "90"
     expected_validation: passed
@@ -40,7 +40,7 @@ golden_tests:
     expected_kpi: "Attrition Rate Detail"
     expected_kpi_id: "kpi_attrition_rate_detail"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "STATIONCODE"
       - "COSTCENTER"
       - "ATTRITION_RATE_PCT"
@@ -51,7 +51,7 @@ golden_tests:
     expected_kpi: "Attrition Rate Detail"
     expected_kpi_id: "kpi_attrition_rate_detail"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "ATL"
       - "DATEADD"
     expected_validation: passed
@@ -61,6 +61,6 @@ golden_tests:
     expected_kpi: "Attrition Rate"
     expected_kpi_id: "kpi_attrition_rate_simple"
     expected_sql_contains:
-      - "AGGEMPCOUNT_ATTRITION_DATA_V"
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
       - "TOTAL_TERMINATION"
     expected_validation: passed

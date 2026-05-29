@@ -1,6 +1,6 @@
 # ============================================================
 # KPI Recipes: Attrition Domain
-# Source view: AGGEMPCOUNT_ATTRITION_DATA_V
+# Source view: AGGEMPCOUNT_ATTRITION_DATA_V_Table
 # Formula: (TOTAL_TERMINATION / EMPLOYEE_HEADCOUNT_ATTRITION)
 #            * (365.0 / DATEDIFF(day, MIN(DATE), MAX(DATE))) * 100
 #
@@ -10,7 +10,7 @@
 # ============================================================
 
 domain: Attrition
-data_source: AGGEMPCOUNT_ATTRITION_DATA_V
+data_source: AGGEMPCOUNT_ATTRITION_DATA_V_Table
 description: "Annualized employee attrition/turnover rate from pre-aggregated headcount and termination counts"
 
 kpis:
@@ -19,11 +19,11 @@ kpis:
     description: "Annualized attrition rate = (Total Terminations / Total Headcount) x (365 / Days in Period) x 100. Supported filters: STATIONCODE and/or COSTCENTER and/or DATE range ONLY. Customer, region, division, and contract dimensions are NOT available in this view and must not be used."
     complexity: medium
     formula: "(SUM(TOTAL_TERMINATION) / NULLIF(SUM(EMPLOYEE_HEADCOUNT_ATTRITION), 0)) * (365.0 / GREATEST(DATEDIFF(day, MIN(DATE), MAX(DATE)), 1)) * 100 AS ATTRITION_RATE_PCT"
-    views: [AGGEMPCOUNT_ATTRITION_DATA_V]
+    views: [AGGEMPCOUNT_ATTRITION_DATA_V_Table]
     steps:
       - order: 1
         name: "apply_filters"
-        logic: "Filter rows from AGGEMPCOUNT_ATTRITION_DATA_V by DATE range and/or STATIONCODE using WHERE clause. If no period filter is given, use all available dates."
+        logic: "Filter rows from AGGEMPCOUNT_ATTRITION_DATA_V_Table by DATE range and/or STATIONCODE using WHERE clause. If no period filter is given, use all available dates."
         required_columns: [DATE, STATIONCODE, COSTCENTER]
       - order: 2
         name: "sum_numerator_denominator"
@@ -77,7 +77,7 @@ kpis:
                MIN(DATE) AS PERIOD_START,
                MAX(DATE) AS PERIOD_END,
                GREATEST(DATEDIFF(day, MIN(DATE), MAX(DATE)), 1) AS DAYS_IN_PERIOD
-        FROM AGGEMPCOUNT_ATTRITION_DATA_V
+        FROM AGGEMPCOUNT_ATTRITION_DATA_V_Table
         WHERE {date_filter}
         GROUP BY STATIONCODE, COSTCENTER
       )
@@ -86,7 +86,7 @@ kpis:
              ROUND((TOTAL_TERMINATIONS / NULLIF(TOTAL_HEADCOUNT, 0)) * (365.0 / DAYS_IN_PERIOD) * 100, 2) AS ATTRITION_RATE_PCT
       FROM period_data
       ORDER BY ATTRITION_RATE_PCT DESC NULLS LAST
-    views: [AGGEMPCOUNT_ATTRITION_DATA_V]
+    views: [AGGEMPCOUNT_ATTRITION_DATA_V_Table]
     steps:
       - order: 1
         name: "period_data_cte"

@@ -49,7 +49,7 @@ views:
       - { name: COSTCENTER, type: VARCHAR(10), description: "Cost center code" }
       - { name: ENTITY_STATION, type: VARCHAR(100), description: "Entity-station composite key" }
 
-  - name: AGGEMPCOUNT_ATTRITION_DATA_V
+  - name: AGGEMPCOUNT_ATTRITION_DATA_V_Table
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: a
     description: "Pre-aggregated headcount and termination counts by station and cost center over time. Used for attrition/turnover analytics."

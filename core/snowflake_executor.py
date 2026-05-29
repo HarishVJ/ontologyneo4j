@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 PREVIEW_LIMIT = 50       # Rows returned in normal API response
 MAX_ROWS = 50000         # Hard ceiling for full CSV export
-QUERY_TIMEOUT_SECONDS = 120  # Increased: attrition aggregate views need warm-up time
+QUERY_TIMEOUT_SECONDS = 10  # Increased: attrition aggregate views need warm-up time
 
 # Persistent connection — created once per process, reused across requests
 _conn = None

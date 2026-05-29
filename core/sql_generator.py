@@ -40,20 +40,33 @@ RULES:
 
 
 def _cache_key(context: StructuredContext) -> str:
-    """Deterministic cache key from KPI id + sorted filters."""
-    raw = f"{context.kpi_id}|{sorted(context.filters)}|{context.grouping}"
+    """Deterministic cache key from KPI id + sorted view names + sorted filters + grouping.
+    View names are included so that renaming a view automatically invalidates cached SQL.
+    """
+    view_names = sorted(v["name"] for v in context.views)
+    raw = f"{context.kpi_id}|{view_names}|{sorted(context.filters)}|{context.grouping}"
     return hashlib.md5(raw.encode()).hexdigest()
+
+
+def clear_sql_cache() -> None:
+    """Evict all entries from the in-process SQL cache."""
+    _sql_cache.clear()
+    logger.info("sql_cache_cleared")
+
+
+def _sql_contains_all_views(sql: str, context: StructuredContext) -> bool:
+    """Return True only if every expected view name appears in the SQL (case-insensitive)."""
+    sql_upper = sql.upper()
+    return all(v["name"].upper() in sql_upper for v in context.views)
 
 
 def generate_sql(context: StructuredContext) -> str:
     """Generate Snowflake SQL from structured context using Azure OpenAI.
     Cache hit = ~0ms. Cache miss = LLM round-trip (~1.5-2s).
+    Stale cache entries (wrong view names) are evicted automatically.
     """
-    # Check cache first
+    # SQL cache disabled — always regenerate via LLM
     key = _cache_key(context)
-    if key in _sql_cache:
-        logger.info("sql_cache_hit", kpi=context.kpi_name)
-        return _sql_cache[key]
 
     settings = get_settings()
 
@@ -82,6 +95,7 @@ def generate_sql(context: StructuredContext) -> str:
 
         raw_sql = response.choices[0].message.content or ""
         sql = _extract_sql(raw_sql)
+        sql = _enforce_view_names(sql, context)
 
         logger.info(
             "sql_generated",
@@ -89,8 +103,6 @@ def generate_sql(context: StructuredContext) -> str:
             tokens=response.usage.total_tokens if response.usage else 0,
             sql_length=len(sql),
         )
-        # Store in cache for subsequent identical requests
-        _sql_cache[key] = sql
         return sql
 
     except Exception as e:
@@ -133,6 +145,39 @@ def _build_user_prompt(context: StructuredContext) -> str:
         parts.append(f"Group by: {context.grouping}")
 
     return "\n".join(parts)
+
+
+def _enforce_view_names(sql: str, context: StructuredContext) -> str:
+    """Scan FROM/JOIN clauses and replace any table token whose last segment is a
+    case-insensitive prefix of (or equal to) the correct view name with the canonical
+    fully-qualified name.  Guards against the LLM generating old/truncated view names.
+    """
+    for view in context.views:
+        correct = view["name"]        # e.g. AGGEMPCOUNT_ATTRITION_DATA_V_Table
+        schema  = view.get("schema", "")  # e.g. AIRCO_EDW_UAT.ILINKAICHAT
+        fq_correct = f"{schema}.{correct}" if schema else correct
+
+        def _replace_token(m: re.Match) -> str:
+            clause = m.group(1)          # FROM / JOIN
+            ref    = m.group(2)          # e.g. AIRCO_EDW_UAT.ILINKAICHAT.AGGEMPCOUNT_ATTRITION_DATA_V
+            alias  = m.group(3) or ""    # e.g. " a"  (may be empty)
+            last   = ref.split(".")[-1]  # bare table token
+            if last.upper() != correct.upper() and correct.upper().startswith(last.upper()):
+                # LLM used a truncated/old name — replace with fully-qualified correct name
+                logger.warning(
+                    "sql_view_name_enforced",
+                    old=ref, new=fq_correct, kpi=context.kpi_name,
+                )
+                return f"{clause} {fq_correct}{alias}"
+            return m.group(0)
+
+        pattern = re.compile(
+            r"(FROM|JOIN)\s+([\w.]+)((?:\s+\w+)?)",
+            re.IGNORECASE,
+        )
+        sql = pattern.sub(_replace_token, sql)
+
+    return sql
 
 
 def _extract_sql(raw: str) -> str:
