@@ -1,0 +1,118 @@
+# ============================================================
+# Disambiguation Rules
+# Resolves ambiguous terms based on KPI/domain context.
+# When a term has multiple meanings, the active KPI determines
+# which interpretation to use.
+# ============================================================
+
+rules:
+  # ── REG: Regular Employee vs Regular Hours ────────────────
+  - term: "REG"
+    meanings:
+      - context: headcount
+        resolves_to: "Regular Employee"
+        column: EMPLOYEETYPECODE
+        value: "REG"
+        description: "In headcount/employee context, REG = Regular (non-temporary) employee type"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V]
+      - context: hours
+        resolves_to: "Regular Hours"
+        column: PAYCODE_CODE
+        value: "REG"
+        description: "In hours/work context, REG = Regular (non-overtime) hours pay code"
+        applies_to_views: [FACTDAILYWORKDETAILS_MS_V]
+
+  # ── OT: Overtime (hours context only) ─────────────────────
+  - term: "OT"
+    meanings:
+      - context: hours
+        resolves_to: "Overtime Hours"
+        column: PAYCODE_CODE
+        value: "OT"
+        description: "OT = Overtime hours pay code"
+        applies_to_views: [FACTDAILYWORKDETAILS_MS_V]
+
+  # ── HC / Headcount ────────────────────────────────────────
+  - term: "HC"
+    meanings:
+      - context: headcount
+        resolves_to: "Headcount"
+        column: null
+        value: null
+        description: "HC = Headcount — employee count metric"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V, AGGEMPCOUNT_ATTRITION_DATA_V_Table]
+
+  # ── ATL: Station code (unambiguous but documented) ────────
+  - term: "ATL"
+    meanings:
+      - context: any
+        resolves_to: "Atlanta station"
+        column: STATIONCODE
+        value: "ATL"
+        description: "ATL = Atlanta airport/station code"
+        applies_to_views: [DIMFINANCEBUSINESSSTRUCTURE_V, DIMHISTORYEMPLOYEE_V, AGGEMPCOUNT_ATTRITION_DATA_V_Table]
+
+  # ── DL: Delta Airlines (not a division code) ──────────────
+  - term: "DL"
+    meanings:
+      - context: customer
+        resolves_to: "Delta Air Lines"
+        column: CUSTOMERCODE
+        value: "DL"
+        description: "DL = Delta Air Lines customer code, not a division"
+        applies_to_views: [DIMFINANCEBUSINESSSTRUCTURE_V]
+
+  # ── FT / PT: Full-Time / Part-Time ───────────────────────
+  - term: "FT"
+    meanings:
+      - context: headcount
+        resolves_to: "Full-Time"
+        column: EMPLOYMENTTYPECODE
+        value: "FT"
+        description: "FT = Full-Time employment type"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V]
+
+  - term: "PT"
+    meanings:
+      - context: headcount
+        resolves_to: "Part-Time"
+        column: EMPLOYMENTTYPECODE
+        value: "PT"
+        description: "PT = Part-Time employment type"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V]
+
+  # ── Active / Terminated status codes ──────────────────────
+  - term: "active"
+    meanings:
+      - context: headcount
+        resolves_to: "Active Employee"
+        column: EMPLOYMENTSTATUSCODE
+        value: "A"
+        description: "Active = employee with status code A"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V]
+
+  - term: "terminated"
+    meanings:
+      - context: headcount
+        resolves_to: "Terminated Employee"
+        column: EMPLOYMENTSTATUSCODE
+        value: "T"
+        description: "Terminated = employee with status code T"
+        applies_to_views: [DIMHISTORYEMPLOYEE_V]
+
+# ── Context Detection Hints ─────────────────────────────────
+# Maps KPI domains to disambiguation contexts so the pipeline
+# knows which meaning to pick for ambiguous terms.
+context_mapping:
+  headcount:
+    kpi_patterns: ["headcount", "employee count", "how many employees", "staff count", "FTE"]
+    views: [DIMHISTORYEMPLOYEE_V]
+  hours:
+    kpi_patterns: ["hours", "overtime", "regular hours", "punch hours", "work hours", "training hours"]
+    views: [FACTDAILYWORKDETAILS_MS_V]
+  attrition:
+    kpi_patterns: ["attrition", "turnover", "termination rate"]
+    views: [AGGEMPCOUNT_ATTRITION_DATA_V_Table]
+  hierarchy:
+    kpi_patterns: ["contracts", "stations", "customers", "hierarchy", "org structure"]
+    views: [DIMFINANCEBUSINESSSTRUCTURE_V]

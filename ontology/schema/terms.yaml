@@ -73,6 +73,45 @@ categories:
       - { code: Unifi, canonical: "Unifi" }
       - { code: Prospect, canonical: "Prospect" }
 
+  - name: abbreviations
+    column: null
+    description: "Unifi business acronyms, synonyms, and abbreviations"
+    terms:
+      # Workforce metrics
+      - { code: HC, canonical: "Headcount", context: "employee count metric" }
+      - { code: FTE, canonical: "Full-Time Equivalent", context: "adjusted headcount metric" }
+      # Employment types
+      - { code: FT, canonical: "Full-Time", context: "EMPLOYMENTTYPECODE = 'FT'" }
+      - { code: PT, canonical: "Part-Time", context: "EMPLOYMENTTYPECODE = 'PT'" }
+      # Employee status
+      - { code: A, canonical: "Active", context: "EMPLOYMENTSTATUSCODE = 'A'" }
+      - { code: T, canonical: "Terminated", context: "EMPLOYMENTSTATUSCODE = 'T'" }
+      - { code: L, canonical: "Leave", context: "EMPLOYMENTSTATUSCODE = 'L'" }
+      - { code: S, canonical: "Suspended", context: "EMPLOYMENTSTATUSCODE = 'S'" }
+      # Pay codes (hours)
+      - { code: OT, canonical: "Overtime", context: "PAYCODE_CODE = 'OT'" }
+      - { code: REG, canonical: "Regular Hours", context: "PAYCODE_CODE = 'REG'" }
+      - { code: HOL, canonical: "Holiday", context: "PAYCODE_CODE = 'HOL'" }
+      - { code: PTO, canonical: "Paid Time Off", context: "PAYCODE_CODE = 'PTO'" }
+      # Station shortcuts (aliases beyond IATA codes)
+      - { code: ATL, canonical: "Atlanta", context: "STATIONCODE = 'ATL'" }
+      - { code: MSP, canonical: "Minneapolis", context: "STATIONCODE = 'MSP'" }
+      - { code: JFK, canonical: "New York JFK", context: "STATIONCODE = 'JFK'" }
+      - { code: LAX, canonical: "Los Angeles", context: "STATIONCODE = 'LAX'" }
+      # Customer shortcuts
+      - { code: DL, canonical: "Delta Air Lines", context: "CUSTOMERCODE or CUSTOMERNAME" }
+      - { code: AS, canonical: "Alaska Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
+      - { code: UA, canonical: "United Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
+      - { code: AA, canonical: "American Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
+      - { code: WN, canonical: "Southwest Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
+      # Attrition / Turnover
+      - { code: YTD, canonical: "Year To Date", context: "DATE >= DATE_TRUNC('year', CURRENT_DATE)" }
+      - { code: MTD, canonical: "Month To Date", context: "DATE >= DATE_TRUNC('month', CURRENT_DATE)" }
+      - { code: QTD, canonical: "Quarter To Date", context: "DATE >= DATE_TRUNC('quarter', CURRENT_DATE)" }
+      # Org hierarchy
+      - { code: LOS, canonical: "Line of Service", context: "service type level in org hierarchy" }
+      - { code: CC, canonical: "Cost Center", context: "COSTCENTER column" }
+
   - name: kpi_synonyms
     column: null
     description: "Natural language phrases that map to KPI identifiers"

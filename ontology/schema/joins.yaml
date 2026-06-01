@@ -1,14 +1,34 @@
 # ============================================================
 # JOIN Path Definitions
 # Explicit join conditions between views.
-# For Contract Hierarchy domain: no joins needed (single denormalized view).
-# This file is ready for future domains (Employee, Hours, etc.)
+# The pipeline uses these to build multi-view SQL correctly.
 # ============================================================
 
-joins: []
-  # Future example:
-  # - from_view: DIMHISTORYEMPLOYEE_V
-  #   to_view: DIMFINANCEBUSINESSSTRUCTURE_V
-  #   condition: "e.COSTCENTER = b.COSTCENTER"
-  #   type: INNER
-  #   description: "Employee to org structure via cost center"
+joins:
+  # ── Employee → Org Hierarchy ──────────────────────────────
+  - from_view: DIMHISTORYEMPLOYEE_V
+    from_alias: e
+    to_view: DIMFINANCEBUSINESSSTRUCTURE_V
+    to_alias: b
+    condition: "e.COSTCENTER = b.COSTCENTER"
+    type: INNER
+    description: "Employee to org structure via cost center — resolves station, region, division, customer from employee record"
+
+  # ── Work Hours → Employee ─────────────────────────────────
+  - from_view: FACTDAILYWORKDETAILS_MS_V
+    from_alias: w
+    to_view: DIMHISTORYEMPLOYEE_V
+    to_alias: e
+    condition: "w.EMPLOYEE_ID = e.EMPLOYEE_ID"
+    type: INNER
+    description: "Work/punch detail to employee dimension — links hours to employee identity and org assignment"
+
+  # ── Work Hours → Org Hierarchy (via Employee) ─────────────
+  - from_view: FACTDAILYWORKDETAILS_MS_V
+    from_alias: w
+    to_view: DIMFINANCEBUSINESSSTRUCTURE_V
+    to_alias: b
+    via: DIMHISTORYEMPLOYEE_V
+    condition: "w.EMPLOYEE_ID = e.EMPLOYEE_ID AND e.COSTCENTER = b.COSTCENTER"
+    type: INNER
+    description: "Work hours to org hierarchy — two-hop join through employee dimension for station/region/customer grouping"

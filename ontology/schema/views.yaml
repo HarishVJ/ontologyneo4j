@@ -67,3 +67,68 @@ views:
       - { name: COSTCENTER,                    type: VARCHAR(10),  description: "Cost center code" }
       - { name: EMPLOYEE_HEADCOUNT_ATTRITION,  type: NUMBER(14,0), description: "Active + inactive headcount — attrition denominator" }
       - { name: TOTAL_TERMINATION,             type: NUMBER(15,0), description: "Hard + soft terminations combined — attrition numerator" }
+
+  - name: DIMHISTORYEMPLOYEE_V
+    schema: AIRCO_EDW_UAT.ILINKAICHAT
+    alias: e
+    description: "Employee dimension — current and historical employee records with status, hire/term dates, org assignment, and manager chain."
+    columns:
+      # Identity
+      - { name: EMPLOYEE_ID,                type: VARCHAR(20),  description: "Unique employee identifier", nullable: false }
+      - { name: FIRSTNAME,                  type: VARCHAR(50),  description: "Employee first name" }
+      - { name: LASTNAME,                   type: VARCHAR(50),  description: "Employee last name" }
+      - { name: FULLNAME,                   type: VARCHAR(100), description: "Concatenated full name" }
+      - { name: MIDDLENAME,                 type: VARCHAR(50),  description: "Middle name" }
+      - { name: NAMESUFFIX,                 type: VARCHAR(50),  description: "Name suffix (Jr, Sr, etc.)" }
+      - { name: PREFERREDNAME,              type: VARCHAR(50),  description: "Preferred/display name" }
+      # Employment dates
+      - { name: HIREDATE,                   type: DATE,         description: "Original hire date" }
+      - { name: TERMINATIONDATE,            type: DATE,         description: "Termination date (NULL = active employee)" }
+      # Employment classification
+      - { name: EMPLOYMENTSTATUSCODE,       type: VARCHAR(10),  description: "Status code — A=Active, T=Terminated, L=Leave, S=Suspended", nullable: false }
+      - { name: EMPLOYMENTTYPECODE,         type: VARCHAR(10),  description: "Employment type code — FT=Full-Time, PT=Part-Time", nullable: false }
+      - { name: EMPLOYEETYPECODE,           type: VARCHAR(10),  description: "Employee type code", nullable: false }
+      - { name: PAYGROUPCODE,               type: VARCHAR(30),  description: "Pay group code", nullable: false }
+      - { name: PAYCLASSCODE,               type: VARCHAR(10),  description: "Pay class code", nullable: false }
+      - { name: JOBTYPECODE,                type: VARCHAR(10),  description: "Job type code", nullable: false }
+      # Org assignment (join keys)
+      - { name: COSTCENTER,                 type: VARCHAR(10),  description: "Cost center code — join key to DIMFINANCEBUSINESSSTRUCTURE_V", nullable: false }
+      - { name: DEPARTMENTCODE,             type: VARCHAR(10),  description: "Department code", nullable: false }
+      - { name: LOCATIONCODE,               type: VARCHAR(10),  description: "Location code", nullable: false }
+      - { name: COMPANYCODE,                type: VARCHAR(10),  description: "Company code", nullable: false }
+      - { name: DIVISIONCODE,               type: VARCHAR(10),  description: "Division code", nullable: false }
+      - { name: STATIONCODE,                type: VARCHAR(10),  description: "Station/site code — join key to org hierarchy", nullable: false }
+      - { name: CUSTOMERCODE,               type: VARCHAR(10),  description: "Customer code" }
+      - { name: SERVICETYPECODE,            type: VARCHAR(20),  description: "Service type code", nullable: false }
+      # Termination detail
+      - { name: TERMTYPEREASONCODE,         type: VARCHAR(10),  description: "Termination reason code" }
+      # Work contact
+      - { name: WORKCOUNTRYCODE,            type: VARCHAR(10),  description: "Work country code" }
+      - { name: WORKPHONENUMBER,            type: VARCHAR(25),  description: "Work phone number" }
+      - { name: WORKEMAIL,                  type: VARCHAR(100), description: "Work email address" }
+      - { name: WORKPOSTALCODE,             type: VARCHAR(20),  description: "Work postal/zip code" }
+      - { name: WORKCITY,                   type: VARCHAR(25),  description: "Work city" }
+      - { name: WORKSTATE,                  type: VARCHAR(25),  description: "Work state" }
+      # Manager
+      - { name: MANAGERID,                  type: VARCHAR(20),  description: "Manager employee ID" }
+      - { name: MANAGEREMAIL,               type: VARCHAR(100), description: "Manager email address" }
+      # History tracking
+      - { name: HISTORYEMPLOYEE_EFFECTIVEFROMDATE, type: DATE,  description: "History record effective from date" }
+      - { name: HISTORYEMPLOYEE_EFFECTIVETODATE,   type: DATE,  description: "History record effective to date" }
+
+  - name: FACTDAILYWORKDETAILS_MS_V
+    schema: AIRCO_EDW_UAT.ILINKAICHAT
+    alias: w
+    description: "Daily work/punch detail fact table — one row per employee per pay code per day. Used for hours, overtime, and attendance analytics."
+    columns:
+      - { name: EMPLOYEE_ID,            type: VARCHAR(20),       description: "Employee identifier — join key to DIMHISTORYEMPLOYEE_V", nullable: false }
+      - { name: PUNCHID,                type: NUMBER(38,0),      description: "Unique punch/transaction ID" }
+      - { name: APPLYDATE,              type: DATE,              description: "Date the hours apply to — primary date grain" }
+      - { name: PAYCODE_CODE,           type: VARCHAR(25),       description: "Pay code (e.g. REG, OT, HOL, PTO) — determines hour type" }
+      - { name: PUNCH_HOURS,            type: NUMBER(12,4),      description: "Hours recorded for this pay code on this day" }
+      - { name: CREATEDDATE,            type: TIMESTAMP_NTZ(9),  description: "Record creation timestamp" }
+      - { name: UPDATEDDATE,            type: TIMESTAMP_NTZ(9),  description: "Record last update timestamp" }
+      - { name: ORIGINAL_TRANSDATE,     type: TIMESTAMP_NTZ(9),  description: "Original transaction date" }
+      - { name: HISTORICAL_EFFECTIVEDATE, type: TIMESTAMP_NTZ(9), description: "Historical effective date for SCD tracking" }
+      - { name: ORIGINAL_TRANS_FLAG,    type: VARCHAR(1),        description: "Original transaction flag" }
+      - { name: APPLYDATE_PAYPERIOD,    type: NUMBER(38,0),      description: "Pay period identifier for the apply date" }
