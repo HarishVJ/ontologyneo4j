@@ -1,0 +1,82 @@
+# ============================================================
+# Golden cases — exercised by tests/test_golden.py
+# Each case sets the expected plan (metric IDs + slots) and
+# substring expectations against the composed SQL.
+# Tests requiring live LLM/Snowflake are skipped unless the
+# RUN_LIVE_GOLDEN=1 env var is set.
+# ============================================================
+
+tests:
+  - id: attrition_simple
+    question: "What is the attrition rate at MSP YTD"
+    expected_metrics: [m_attrition_rate]
+    expected_output: aggregate
+    expected_filters:
+      - { column: STATIONCODE, op: "=", value: "MSP" }
+    expected_sql_contains:
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
+      - "STATIONCODE"
+    expected_sql_not_contains: []
+
+  - id: attrition_threshold_grouped
+    question: "Stations whose attrition is more than 10%"
+    expected_metrics: [m_attrition_rate]
+    expected_output: aggregate
+    expected_group_by: [STATIONCODE]
+    expected_thresholds:
+      - { metric: m_attrition_rate, op: ">", value: 10 }
+    expected_sql_contains:
+      - "STATIONCODE"
+      - "GROUP BY"
+
+  - id: attrition_top_n
+    question: "Top 5 stations by attrition last quarter"
+    expected_metrics: [m_attrition_rate]
+    expected_output: aggregate
+    expected_group_by: [STATIONCODE]
+    expected_ranking_present: true
+    expected_sql_contains:
+      - "ORDER BY"
+      - "5"
+
+  - id: multi_metric_threshold
+    question: "Stations where attrition is more than 10% and overtime is more than 50 hours"
+    expected_metrics: [m_attrition_rate, m_overtime_hours]
+    expected_output: aggregate
+    expected_group_by: [STATIONCODE]
+    expected_thresholds:
+      - { metric: m_attrition_rate, op: ">", value: 10 }
+      - { metric: m_overtime_hours, op: ">", value: 50 }
+    expected_sql_contains:
+      - "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
+      - "FACTDAILYWORKDETAILS_MS_V"
+      - "DIMHISTORYEMPLOYEE_V"
+      - "JOIN"
+
+  - id: list_contracts_filtered
+    question: "List all contracts for MSP"
+    expected_metrics: [m_contracts]
+    expected_output: list
+    expected_filters:
+      - { column: STATIONCODE, op: "=", value: "MSP" }
+    expected_sql_contains:
+      - "DISTINCT"
+      - "CONTRACTCODE"
+      - "STATIONCODE"
+
+  - id: count_contracts_division
+    question: "How many contracts are in the Security division"
+    expected_metrics: [m_contracts_count]
+    expected_output: aggregate
+    expected_sql_contains:
+      - "COUNT"
+      - "CONTRACTCODE"
+
+  - id: hierarchy_lookup
+    question: "Provide the contract name for cost center 641"
+    expected_metrics: [m_hierarchy]
+    expected_output: list
+    expected_filters:
+      - { column: COSTCENTER, op: "=", value: "641" }
+    expected_sql_contains:
+      - "COSTCENTER"

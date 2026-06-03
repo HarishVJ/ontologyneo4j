@@ -1,0 +1,71 @@
+# ============================================================
+# Join Graph
+# Each entry is a directed edge between two views. The `provides`
+# field declares which dimension columns become accessible by
+# traversing the edge. The plan stage runs a Cypher shortest-path
+# query over JOINS_TO edges to find a join chain from a metric's
+# primary view to the requested grouping dimension.
+# Aliases use {from_alias} and {to_alias} placeholders so the
+# composer can substitute the per-query alias at runtime.
+# ============================================================
+
+joins:
+  # ── Work detail → Employee dimension ──────────────────────
+  - id: j_workdetail_to_employee
+    from: FACTDAILYWORKDETAILS_MS_V
+    to:   DIMHISTORYEMPLOYEE_V
+    on:   "{from_alias}.EMPLOYEE_ID = {to_alias}.EMPLOYEE_ID"
+    type: INNER
+    description: >
+      Punch detail to employee dimension. Required for any work-hours
+      slicing by station, cost center, division, or customer.
+    provides:
+      - STATIONCODE
+      - COSTCENTER
+      - DIVISIONCODE
+      - CUSTOMERCODE
+      - DEPARTMENTCODE
+      - LOCATIONCODE
+      - EMPLOYMENTSTATUSCODE
+      - EMPLOYMENTTYPECODE
+
+  # ── Employee → Org hierarchy ──────────────────────────────
+  - id: j_employee_to_org
+    from: DIMHISTORYEMPLOYEE_V
+    to:   DIMFINANCEBUSINESSSTRUCTURE_V
+    on:   "{from_alias}.COSTCENTER = {to_alias}.COSTCENTER"
+    type: INNER
+    description: >
+      Employee record to org hierarchy via cost center. Resolves
+      friendly names: STATIONNAME, REGIONNAME, DIVISIONNAME,
+      CUSTOMERNAME, CONTRACTNAME, GRANDPARENTREGIONNAME.
+    provides:
+      - STATIONNAME
+      - REGIONNAME
+      - SUBREGIONNAME
+      - GRANDPARENTREGIONNAME
+      - DIVISIONNAME
+      - CUSTOMERNAME
+      - CONTRACTCODE
+      - CONTRACTNAME
+      - SERVICETYPENAME
+      - DEPARTMENTNAME
+      - ENTITYDESCRIPTION
+
+  # ── Attrition aggregate → Org hierarchy ───────────────────
+  - id: j_attrition_to_org
+    from: AGGEMPCOUNT_ATTRITION_DATA_V_Table
+    to:   DIMFINANCEBUSINESSSTRUCTURE_V
+    on:   "{from_alias}.COSTCENTER = {to_alias}.COSTCENTER"
+    type: INNER
+    description: >
+      Attrition aggregate to org hierarchy. Allows attrition slicing
+      by friendly hierarchy names (region, division, customer).
+    provides:
+      - STATIONNAME
+      - REGIONNAME
+      - SUBREGIONNAME
+      - GRANDPARENTREGIONNAME
+      - DIVISIONNAME
+      - CUSTOMERNAME
+      - ENTITYDESCRIPTION

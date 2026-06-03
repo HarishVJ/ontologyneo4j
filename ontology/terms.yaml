@@ -1,0 +1,100 @@
+# ============================================================
+# Term Dictionary
+# Maps business vocabulary to canonical filter values. The plan
+# extractor LLM consults this list to resolve user-typed entity
+# names (codes, abbreviations, friendly names) to their canonical
+# Snowflake column values.
+# ============================================================
+
+categories:
+  - name: stations
+    column: STATIONCODE
+    description: "Airport/station codes recognized by the system"
+    terms:
+      - { code: ATL, canonical: "ATL", aliases: ["Atlanta"] }
+      - { code: MSP, canonical: "MSP", aliases: ["Minneapolis"] }
+      - { code: JFK, canonical: "JFK", aliases: ["New York JFK"] }
+      - { code: LAX, canonical: "LAX", aliases: ["Los Angeles"] }
+      - { code: LAS, canonical: "LAS", aliases: ["Las Vegas"] }
+      - { code: DTW, canonical: "DTW", aliases: ["Detroit"] }
+      - { code: DFW, canonical: "DFW", aliases: ["Dallas Fort Worth"] }
+      - { code: ORD, canonical: "ORD", aliases: ["Chicago O'Hare", "Chicago"] }
+      - { code: DEN, canonical: "DEN", aliases: ["Denver"] }
+      - { code: SEA, canonical: "SEA", aliases: ["Seattle"] }
+      - { code: SFO, canonical: "SFO", aliases: ["San Francisco"] }
+      - { code: MIA, canonical: "MIA", aliases: ["Miami"] }
+      - { code: BOS, canonical: "BOS", aliases: ["Boston"] }
+      - { code: CLT, canonical: "CLT", aliases: ["Charlotte"] }
+      - { code: PHX, canonical: "PHX", aliases: ["Phoenix"] }
+      - { code: IAH, canonical: "IAH", aliases: ["Houston"] }
+      - { code: EWR, canonical: "EWR", aliases: ["Newark"] }
+      - { code: MCO, canonical: "MCO", aliases: ["Orlando"] }
+      - { code: SAN, canonical: "SAN", aliases: ["San Diego"] }
+      - { code: TPA, canonical: "TPA", aliases: ["Tampa"] }
+      - { code: PDX, canonical: "PDX", aliases: ["Portland"] }
+
+  - name: customers
+    column: CUSTOMERNAME
+    description: "Customer/airline names"
+    terms:
+      - { code: Delta,     canonical: "Delta Air Lines",  aliases: ["DL"] }
+      - { code: Alaska,    canonical: "Alaska Airlines",  aliases: ["AS"] }
+      - { code: United,    canonical: "United Airlines",  aliases: ["UA"] }
+      - { code: American,  canonical: "American Airlines", aliases: ["AA"] }
+      - { code: Southwest, canonical: "Southwest Airlines", aliases: ["WN"] }
+
+  - name: regions
+    column: GRANDPARENTREGIONNAME
+    description: "Grand parent region names"
+    terms:
+      - { code: Central,   canonical: "Central" }
+      - { code: West,      canonical: "West" }
+      - { code: East,      canonical: "East" }
+      - { code: Southeast, canonical: "Southeast" }
+      - { code: "Mid West", canonical: "Mid West" }
+
+  - name: divisions
+    column: DIVISIONNAME
+    description: "Division names"
+    terms:
+      - { code: Security,         canonical: "Security" }
+      - { code: "Cabin Services", canonical: "Cabin Services" }
+      - { code: "Ground Handling", canonical: "Ground Handling" }
+      - { code: "Full Handling",  canonical: "Full Handling" }
+      - { code: Cargo,            canonical: "Cargo" }
+
+  - name: entities
+    column: ENTITYDESCRIPTION
+    description: "Legal entity names"
+    terms:
+      - { code: Unifi,    canonical: "Unifi" }
+      - { code: Prospect, canonical: "Prospect" }
+
+  - name: paycodes
+    column: PAYCODE_CODE
+    description: "Hour-type pay codes used in the work-detail fact"
+    terms:
+      - { code: OT,  canonical: "OT",  aliases: ["overtime", "Overtime"] }
+      - { code: REG, canonical: "REG", aliases: ["regular", "Regular Hours"] }
+      - { code: HOL, canonical: "HOL", aliases: ["holiday", "Holiday"] }
+      - { code: PTO, canonical: "PTO", aliases: ["paid time off", "vacation"] }
+
+  - name: periods
+    column: null
+    description: >
+      Named relative time ranges. The `expression` field is a Snowflake
+      predicate fragment — the plan extractor substitutes the metric's
+      actual date_column for {date_col} at runtime.
+    terms:
+      - { code: "this month",     canonical: "This Month",      expression: "{date_col} >= DATE_TRUNC('month', CURRENT_DATE)" }
+      - { code: "current month",  canonical: "This Month",      expression: "{date_col} >= DATE_TRUNC('month', CURRENT_DATE)" }
+      - { code: "last month",     canonical: "Last Month",      expression: "{date_col} >= DATEADD(month, -1, DATE_TRUNC('month', CURRENT_DATE)) AND {date_col} < DATE_TRUNC('month', CURRENT_DATE)" }
+      - { code: "previous month", canonical: "Last Month",      expression: "{date_col} >= DATEADD(month, -1, DATE_TRUNC('month', CURRENT_DATE)) AND {date_col} < DATE_TRUNC('month', CURRENT_DATE)" }
+      - { code: "ytd",            canonical: "Year To Date",    expression: "{date_col} >= DATE_TRUNC('year', CURRENT_DATE)" }
+      - { code: "year to date",   canonical: "Year To Date",    expression: "{date_col} >= DATE_TRUNC('year', CURRENT_DATE)" }
+      - { code: "this year",      canonical: "Year To Date",    expression: "{date_col} >= DATE_TRUNC('year', CURRENT_DATE)" }
+      - { code: "last 90 days",   canonical: "Last 90 Days",    expression: "{date_col} >= DATEADD(day, -90, CURRENT_DATE)" }
+      - { code: "last 30 days",   canonical: "Last 30 Days",    expression: "{date_col} >= DATEADD(day, -30, CURRENT_DATE)" }
+      - { code: "last quarter",   canonical: "Last Quarter",    expression: "{date_col} >= DATEADD(quarter, -1, DATE_TRUNC('quarter', CURRENT_DATE)) AND {date_col} < DATE_TRUNC('quarter', CURRENT_DATE)" }
+      - { code: "this quarter",   canonical: "This Quarter",    expression: "{date_col} >= DATE_TRUNC('quarter', CURRENT_DATE)" }
+      - { code: "last year",      canonical: "Last Year",       expression: "{date_col} >= DATEADD(year, -1, DATE_TRUNC('year', CURRENT_DATE)) AND {date_col} < DATE_TRUNC('year', CURRENT_DATE)" }

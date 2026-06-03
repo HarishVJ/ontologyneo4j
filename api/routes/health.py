@@ -31,11 +31,11 @@ async def examples():
     """Return sample questions for the UI."""
     return ExampleResponse(examples=[
         {"question": "List all contracts for MSP", "category": "contracts"},
-        {"question": "How many contracts are there in the Security division?", "category": "contracts"},
-        {"question": "List all the stations", "category": "stations"},
-        {"question": "List all contracts for Central region", "category": "contracts"},
+        {"question": "How many contracts are in the Security division", "category": "contracts"},
+        {"question": "List all the stations in the Central region", "category": "stations"},
+        {"question": "What is the attrition rate at MSP YTD", "category": "attrition"},
+        {"question": "Stations whose attrition is more than 10%", "category": "attrition"},
+        {"question": "Top 5 stations by attrition last quarter", "category": "attrition"},
+        {"question": "Stations where attrition is more than 10% and overtime is more than 50 hours", "category": "multi-metric"},
         {"question": "Provide the contract name for cost center 641", "category": "hierarchy"},
-        {"question": "List all customers at ATL", "category": "customers"},
-        {"question": "What contracts does Delta have?", "category": "contracts"},
-        {"question": "List all the airports", "category": "stations"},
     ])

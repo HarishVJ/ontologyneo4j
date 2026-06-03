@@ -1,7 +1,7 @@
 # ============================================================
 # Snowflake View Definitions
-# Single source of truth for all view/column metadata.
-# To add/change a view: edit this file and re-run seed_ontology.py
+# Source of truth for all view/column metadata.
+# Edit this file then re-run scripts/seed_ontology.py
 # ============================================================
 
 views:
@@ -10,41 +10,29 @@ views:
     alias: b
     description: "Denormalized org hierarchy — 11 levels from GrandParentRegion to Contract"
     columns:
-      # Level 1: Grand Parent Region
       - { name: GRANDPARENTREGIONCODE, type: VARCHAR(100), description: "Top-level region code" }
       - { name: GRANDPARENTREGIONNAME, type: VARCHAR(100), description: "Top-level region name" }
-      # Level 2: Parent Region
       - { name: PARENTREGIONCODE, type: VARCHAR(100), description: "Parent region code" }
       - { name: PARENTREGIONNAME, type: VARCHAR(100), description: "Parent region name" }
-      # Level 3: Entity (Legal Entity)
       - { name: ENTITYCODE, type: VARCHAR(100), description: "Legal entity code" }
       - { name: ENTITYDESCRIPTION, type: VARCHAR(100), description: "Legal entity description" }
-      # Level 4: Region
       - { name: REGIONCODE, type: VARCHAR(100), description: "Region code" }
       - { name: REGIONNAME, type: VARCHAR(100), description: "Region name" }
-      # Level 5: Sub-Region
       - { name: SUBREGIONCODE, type: VARCHAR(100), description: "Sub-region code" }
       - { name: SUBREGIONNAME, type: VARCHAR(100), description: "Sub-region name" }
-      # Level 6: Division
       - { name: DIVISIONCODE, type: VARCHAR(10), description: "Division code" }
       - { name: DIVISIONCODE_ULTIPRO, type: VARCHAR(100), description: "Division code (UltiPro)" }
       - { name: DIVISIONNAME, type: VARCHAR(50), description: "Division name" }
-      # Level 7: Station
       - { name: STATIONCODE, type: VARCHAR(10), description: "Station/airport code (e.g. ATL, MSP)" }
       - { name: STATIONNAME, type: VARCHAR(100), description: "Station full name" }
-      # Level 8: Customer
       - { name: CUSTOMERCODE, type: VARCHAR(30), description: "Customer code" }
       - { name: CUSTOMERNAME, type: VARCHAR(100), description: "Customer name (e.g. Delta, Alaska)" }
-      # Level 9: Service Type
       - { name: SERVICETYPECODE, type: VARCHAR(50), description: "Service type code" }
       - { name: SERVICETYPENAME, type: VARCHAR(100), description: "Service type name" }
-      # Level 10: Department
       - { name: DEPARTMENTID, type: VARCHAR(10), description: "Department ID" }
       - { name: DEPARTMENTNAME, type: VARCHAR(100), description: "Department name" }
-      # Level 11: Contract (leaf node)
       - { name: CONTRACTCODE, type: VARCHAR(50), description: "Contract code" }
       - { name: CONTRACTNAME, type: VARCHAR(100), description: "Contract name" }
-      # Derived / Composite
       - { name: DISPLAYNAME, type: VARCHAR(1000), description: "Formatted display name" }
       - { name: COSTCENTER, type: VARCHAR(10), description: "Cost center code" }
       - { name: ENTITY_STATION, type: VARCHAR(100), description: "Entity-station composite key" }
@@ -57,6 +45,7 @@ views:
       - ATTRITION_RATE_PCT
       - TOTAL_TERMINATIONS
       - TOTAL_HEADCOUNT
+      - HEADCOUNT
       - DAYS_IN_PERIOD
       - PERIOD_START
       - PERIOD_END
@@ -73,62 +62,37 @@ views:
     alias: e
     description: "Employee dimension — current and historical employee records with status, hire/term dates, org assignment, and manager chain."
     columns:
-      # Identity
-      - { name: EMPLOYEE_ID,                type: VARCHAR(20),  description: "Unique employee identifier", nullable: false }
+      - { name: EMPLOYEE_ID,                type: VARCHAR(20),  description: "Unique employee identifier" }
       - { name: FIRSTNAME,                  type: VARCHAR(50),  description: "Employee first name" }
       - { name: LASTNAME,                   type: VARCHAR(50),  description: "Employee last name" }
       - { name: FULLNAME,                   type: VARCHAR(100), description: "Concatenated full name" }
-      - { name: MIDDLENAME,                 type: VARCHAR(50),  description: "Middle name" }
-      - { name: NAMESUFFIX,                 type: VARCHAR(50),  description: "Name suffix (Jr, Sr, etc.)" }
-      - { name: PREFERREDNAME,              type: VARCHAR(50),  description: "Preferred/display name" }
-      # Employment dates
       - { name: HIREDATE,                   type: DATE,         description: "Original hire date" }
       - { name: TERMINATIONDATE,            type: DATE,         description: "Termination date (NULL = active employee)" }
-      # Employment classification
-      - { name: EMPLOYMENTSTATUSCODE,       type: VARCHAR(10),  description: "Status code — A=Active, T=Terminated, L=Leave, S=Suspended", nullable: false }
-      - { name: EMPLOYMENTTYPECODE,         type: VARCHAR(10),  description: "Employment type code — FT=Full-Time, PT=Part-Time", nullable: false }
-      - { name: EMPLOYEETYPECODE,           type: VARCHAR(10),  description: "Employee type code", nullable: false }
-      - { name: PAYGROUPCODE,               type: VARCHAR(30),  description: "Pay group code", nullable: false }
-      - { name: PAYCLASSCODE,               type: VARCHAR(10),  description: "Pay class code", nullable: false }
-      - { name: JOBTYPECODE,                type: VARCHAR(10),  description: "Job type code", nullable: false }
-      # Org assignment (join keys)
-      - { name: COSTCENTER,                 type: VARCHAR(10),  description: "Cost center code — join key to DIMFINANCEBUSINESSSTRUCTURE_V", nullable: false }
-      - { name: DEPARTMENTCODE,             type: VARCHAR(10),  description: "Department code", nullable: false }
-      - { name: LOCATIONCODE,               type: VARCHAR(10),  description: "Location code", nullable: false }
-      - { name: COMPANYCODE,                type: VARCHAR(10),  description: "Company code", nullable: false }
-      - { name: DIVISIONCODE,               type: VARCHAR(10),  description: "Division code", nullable: false }
-      - { name: STATIONCODE,                type: VARCHAR(10),  description: "Station/site code — join key to org hierarchy", nullable: false }
+      - { name: EMPLOYMENTSTATUSCODE,       type: VARCHAR(10),  description: "Status code — A=Active, T=Terminated, L=Leave, S=Suspended" }
+      - { name: EMPLOYMENTTYPECODE,         type: VARCHAR(10),  description: "Employment type code — FT=Full-Time, PT=Part-Time" }
+      - { name: PAYGROUPCODE,               type: VARCHAR(30),  description: "Pay group code" }
+      - { name: PAYCLASSCODE,               type: VARCHAR(10),  description: "Pay class code" }
+      - { name: JOBTYPECODE,                type: VARCHAR(10),  description: "Job type code" }
+      - { name: COSTCENTER,                 type: VARCHAR(10),  description: "Cost center code — join key to DIMFINANCEBUSINESSSTRUCTURE_V" }
+      - { name: DEPARTMENTCODE,             type: VARCHAR(10),  description: "Department code" }
+      - { name: LOCATIONCODE,               type: VARCHAR(10),  description: "Location code" }
+      - { name: COMPANYCODE,                type: VARCHAR(10),  description: "Company code" }
+      - { name: DIVISIONCODE,               type: VARCHAR(10),  description: "Division code" }
+      - { name: STATIONCODE,                type: VARCHAR(10),  description: "Station/site code — join key to org hierarchy" }
       - { name: CUSTOMERCODE,               type: VARCHAR(10),  description: "Customer code" }
-      - { name: SERVICETYPECODE,            type: VARCHAR(20),  description: "Service type code", nullable: false }
-      # Termination detail
+      - { name: SERVICETYPECODE,            type: VARCHAR(20),  description: "Service type code" }
       - { name: TERMTYPEREASONCODE,         type: VARCHAR(10),  description: "Termination reason code" }
-      # Work contact
-      - { name: WORKCOUNTRYCODE,            type: VARCHAR(10),  description: "Work country code" }
-      - { name: WORKPHONENUMBER,            type: VARCHAR(25),  description: "Work phone number" }
-      - { name: WORKEMAIL,                  type: VARCHAR(100), description: "Work email address" }
-      - { name: WORKPOSTALCODE,             type: VARCHAR(20),  description: "Work postal/zip code" }
-      - { name: WORKCITY,                   type: VARCHAR(25),  description: "Work city" }
-      - { name: WORKSTATE,                  type: VARCHAR(25),  description: "Work state" }
-      # Manager
       - { name: MANAGERID,                  type: VARCHAR(20),  description: "Manager employee ID" }
       - { name: MANAGEREMAIL,               type: VARCHAR(100), description: "Manager email address" }
-      # History tracking
-      - { name: HISTORYEMPLOYEE_EFFECTIVEFROMDATE, type: DATE,  description: "History record effective from date" }
-      - { name: HISTORYEMPLOYEE_EFFECTIVETODATE,   type: DATE,  description: "History record effective to date" }
 
   - name: FACTDAILYWORKDETAILS_MS_V
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: w
     description: "Daily work/punch detail fact table — one row per employee per pay code per day. Used for hours, overtime, and attendance analytics."
     columns:
-      - { name: EMPLOYEE_ID,            type: VARCHAR(20),       description: "Employee identifier — join key to DIMHISTORYEMPLOYEE_V", nullable: false }
+      - { name: EMPLOYEE_ID,            type: VARCHAR(20),       description: "Employee identifier — join key to DIMHISTORYEMPLOYEE_V" }
       - { name: PUNCHID,                type: NUMBER(38,0),      description: "Unique punch/transaction ID" }
       - { name: APPLYDATE,              type: DATE,              description: "Date the hours apply to — primary date grain" }
       - { name: PAYCODE_CODE,           type: VARCHAR(25),       description: "Pay code (e.g. REG, OT, HOL, PTO) — determines hour type" }
       - { name: PUNCH_HOURS,            type: NUMBER(12,4),      description: "Hours recorded for this pay code on this day" }
-      - { name: CREATEDDATE,            type: TIMESTAMP_NTZ(9),  description: "Record creation timestamp" }
-      - { name: UPDATEDDATE,            type: TIMESTAMP_NTZ(9),  description: "Record last update timestamp" }
-      - { name: ORIGINAL_TRANSDATE,     type: TIMESTAMP_NTZ(9),  description: "Original transaction date" }
-      - { name: HISTORICAL_EFFECTIVEDATE, type: TIMESTAMP_NTZ(9), description: "Historical effective date for SCD tracking" }
-      - { name: ORIGINAL_TRANS_FLAG,    type: VARCHAR(1),        description: "Original transaction flag" }
       - { name: APPLYDATE_PAYPERIOD,    type: NUMBER(38,0),      description: "Pay period identifier for the apply date" }

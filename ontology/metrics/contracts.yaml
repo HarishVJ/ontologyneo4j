@@ -1,0 +1,84 @@
+# ============================================================
+# Contract metrics — listings and counts
+# Sourced from DIMFINANCEBUSINESSSTRUCTURE_V (org hierarchy).
+# ============================================================
+
+metrics:
+  # ── Contract listing (DISTINCT projection) ────────────────
+  - id: m_contracts
+    kind: list
+    name: Contracts
+    description: >
+      Distinct list of contracts with their station, customer, and
+      identity. Filterable by any column in the org hierarchy view.
+    view: DIMFINANCEBUSINESSSTRUCTURE_V
+    list_columns:
+      - CONTRACTCODE
+      - CONTRACTNAME
+      - STATIONCODE
+      - STATIONNAME
+      - CUSTOMERNAME
+    distinct_on: CONTRACTCODE
+    default_order_by:
+      - STATIONCODE
+      - CONTRACTNAME
+    sliceable_by:
+      - STATIONCODE
+      - CUSTOMERNAME
+      - GRANDPARENTREGIONNAME
+      - DIVISIONNAME
+      - ENTITYDESCRIPTION
+      - REGIONNAME
+      - SUBREGIONNAME
+      - COSTCENTER
+      - CONTRACTCODE
+      - CONTRACTNAME
+    synonyms:
+      - contracts
+      - "list contracts"
+      - "show contracts"
+      - "all contracts"
+      - "what contracts"
+      - "contracts for"
+      - "list all the contracts"
+    example_questions:
+      - "list all contracts for MSP"
+      - "what contracts does Delta have"
+      - "list all contracts for Central region"
+    version: "1.0"
+    status: active
+    owner: data_team
+
+  # ── Contract count ────────────────────────────────────────
+  - id: m_contracts_count
+    kind: metric
+    name: Contract Count
+    description: >
+      Distinct count of contracts. Group by station/customer/region/division
+      to break down counts across the org hierarchy.
+    view: DIMFINANCEBUSINESSSTRUCTURE_V
+    expression: "COUNT(DISTINCT {alias}.CONTRACTCODE)"
+    alias: CONTRACT_COUNT
+    unit: contracts
+    sliceable_by:
+      - STATIONCODE
+      - CUSTOMERNAME
+      - GRANDPARENTREGIONNAME
+      - DIVISIONNAME
+      - ENTITYDESCRIPTION
+      - REGIONNAME
+      - SUBREGIONNAME
+      - SERVICETYPENAME
+    synonyms:
+      - "how many contracts"
+      - "number of contracts"
+      - "contract count"
+      - "count contracts"
+      - "total contracts"
+    example_questions:
+      - "how many contracts at MSP"
+      - "number of contracts in the Security division"
+      - "contract count by region"
+    version: "1.0"
+    status: active
+    owner: data_team

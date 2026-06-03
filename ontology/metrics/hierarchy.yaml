@@ -1,0 +1,130 @@
+# ============================================================
+# Hierarchy metrics — station/customer listings and full lookups
+# Sourced from DIMFINANCEBUSINESSSTRUCTURE_V (org hierarchy).
+# ============================================================
+
+metrics:
+  # ── Station listing ───────────────────────────────────────
+  - id: m_stations
+    kind: list
+    name: Stations
+    description: >
+      Distinct list of stations/airports with codes and names.
+      Filterable by region, division, or legal entity.
+    view: DIMFINANCEBUSINESSSTRUCTURE_V
+    list_columns:
+      - STATIONCODE
+      - STATIONNAME
+    distinct_on: STATIONCODE
+    default_order_by:
+      - STATIONCODE
+    sliceable_by:
+      - GRANDPARENTREGIONNAME
+      - REGIONNAME
+      - SUBREGIONNAME
+      - DIVISIONNAME
+      - ENTITYDESCRIPTION
+      - CUSTOMERNAME
+    synonyms:
+      - stations
+      - airports
+      - hubs
+      - "list stations"
+      - "list airports"
+      - "list hubs"
+      - "list all stations"
+      - "all stations"
+      - "all airports"
+      - "show stations"
+    example_questions:
+      - "list all the stations"
+      - "list stations in the Central region"
+      - "show all hubs"
+    version: "1.0"
+    status: active
+    owner: data_team
+
+  # ── Customer listing ──────────────────────────────────────
+  - id: m_customers
+    kind: list
+    name: Customers
+    description: >
+      Distinct list of customers/airlines, optionally filtered by station,
+      region, or division.
+    view: DIMFINANCEBUSINESSSTRUCTURE_V
+    list_columns:
+      - CUSTOMERCODE
+      - CUSTOMERNAME
+    distinct_on: CUSTOMERCODE
+    default_order_by:
+      - CUSTOMERNAME
+    sliceable_by:
+      - STATIONCODE
+      - GRANDPARENTREGIONNAME
+      - REGIONNAME
+      - DIVISIONNAME
+    synonyms:
+      - customers
+      - airlines
+      - "list customers"
+      - "show customers"
+      - "all customers"
+      - "what customers"
+      - "customers at"
+    example_questions:
+      - "list all customers at ATL"
+      - "customers in the Central region"
+      - "all airlines we serve"
+    version: "1.0"
+    status: active
+    owner: data_team
+
+  # ── Hierarchy lookup (full org chain for a cost center / contract) ──
+  - id: m_hierarchy
+    kind: list
+    name: Hierarchy Lookup
+    description: >
+      Full 11-level org hierarchy for a cost center, contract code, or
+      contract name. Returns one row per matching record showing the
+      chain from grand-parent region down to contract.
+    view: DIMFINANCEBUSINESSSTRUCTURE_V
+    list_columns:
+      - GRANDPARENTREGIONNAME
+      - REGIONNAME
+      - SUBREGIONNAME
+      - ENTITYDESCRIPTION
+      - DIVISIONNAME
+      - STATIONCODE
+      - STATIONNAME
+      - CUSTOMERNAME
+      - SERVICETYPENAME
+      - DEPARTMENTNAME
+      - CONTRACTCODE
+      - CONTRACTNAME
+      - COSTCENTER
+    distinct_on: null
+    default_order_by:
+      - STATIONCODE
+      - CONTRACTNAME
+    sliceable_by:
+      - COSTCENTER
+      - CONTRACTCODE
+      - CONTRACTNAME
+      - STATIONCODE
+      - CUSTOMERNAME
+      - DIVISIONNAME
+      - GRANDPARENTREGIONNAME
+    synonyms:
+      - "cost center lookup"
+      - "contract name for cost center"
+      - "which region"
+      - hierarchy
+      - "org structure"
+      - "where does this contract belong"
+    example_questions:
+      - "provide the contract name for cost center 641"
+      - "which region is contract C123 in"
+      - "show the org hierarchy for cost center 5012"
+    version: "1.0"
+    status: active
+    owner: data_team

@@ -1,8 +1,8 @@
 """
-Seed ontology: loads all YAML definitions into Neo4j.
-Run this after any ontology YAML changes.
+Seed Neo4j with the lean semantic ontology.
+Run after any YAML edit:
 
-Usage: python -m scripts.seed_ontology
+    python -m scripts.seed_ontology
 """
 
 import sys
@@ -15,25 +15,29 @@ from ontology.loader import load_all
 from ontology.validator import validate_ontology
 
 
-def main():
+def main() -> int:
     setup_logging()
     print("=" * 60)
     print("  Seeding Neo4j Ontology from YAML")
     print("=" * 60)
 
     counts = load_all()
-    print(f"\nLoaded: {counts}")
+    print("\nLoaded:")
+    for k, v in counts.items():
+        print(f"  {k:10s} {v}")
 
     print("\nRunning structural validation...")
     results = validate_ontology()
-    print(f"\nOverall: {results['overall']}")
+    print(f"\nOverall: {results['overall']}\n")
     for item in results["passed"]:
-        print(f"  ✓ {item}")
+        print(f"  PASS  {item}")
     for item in results["warnings"]:
-        print(f"  ⚠ {item}")
+        print(f"  WARN  {item}")
     for item in results["failed"]:
-        print(f"  ✗ {item}")
+        print(f"  FAIL  {item}")
+
+    return 0 if results["overall"] == "PASSED" else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

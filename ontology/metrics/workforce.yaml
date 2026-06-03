@@ -1,0 +1,118 @@
+# ============================================================
+# Workforce metrics
+# Sourced from AGGEMPCOUNT_ATTRITION_DATA_V_Table (attrition aggregate)
+# and FACTDAILYWORKDETAILS_MS_V (daily punch detail).
+# ============================================================
+
+metrics:
+  # ── Attrition rate (annualized %) ──────────────────────────
+  - id: m_attrition_rate
+    kind: metric
+    name: Attrition Rate
+    description: >
+      Annualized employee turnover/attrition as a percentage. Computed as
+      (sum of terminations / sum of headcount) annualized over the period.
+      Lower is better.
+    view: AGGEMPCOUNT_ATTRITION_DATA_V_Table
+    expression: |
+      ROUND(
+        (SUM({alias}.TOTAL_TERMINATION) / NULLIF(SUM({alias}.EMPLOYEE_HEADCOUNT_ATTRITION), 0))
+        * (365.0 / GREATEST(DATEDIFF(day, MIN({alias}.DATE), MAX({alias}.DATE)), 1))
+        * 100,
+        2
+      )
+    alias: ATTRITION_RATE_PCT
+    unit: percent
+    polarity: lower_is_better
+    sliceable_by:
+      - STATIONCODE
+      - COSTCENTER
+      - DATE
+    date_column: DATE
+    synonyms:
+      - attrition
+      - "attrition rate"
+      - turnover
+      - "turnover rate"
+      - "termination rate"
+      - churn
+      - "headcount churn"
+    example_questions:
+      - "what is the attrition rate at MSP"
+      - "show attrition for cost center 641 YTD"
+      - "stations whose attrition is more than 10%"
+      - "top 5 stations by attrition last quarter"
+      - "attrition by station"
+    version: "2.0"
+    status: active
+    owner: hr_analytics
+
+  # ── Headcount (employee count) ─────────────────────────────
+  - id: m_headcount
+    kind: metric
+    name: Headcount
+    description: >
+      Total employee headcount aggregated from the attrition denominator.
+      Use SUM over the period; for a point-in-time count, restrict the
+      period to a single date.
+    view: AGGEMPCOUNT_ATTRITION_DATA_V_Table
+    expression: "SUM({alias}.EMPLOYEE_HEADCOUNT_ATTRITION)"
+    alias: HEADCOUNT
+    unit: employees
+    sliceable_by:
+      - STATIONCODE
+      - COSTCENTER
+      - DATE
+    date_column: DATE
+    synonyms:
+      - headcount
+      - "head count"
+      - "employee count"
+      - HC
+      - "number of employees"
+      - "how many employees"
+    example_questions:
+      - "headcount at ATL"
+      - "how many employees at MSP last month"
+      - "stations with headcount above 200"
+    version: "1.0"
+    status: active
+    owner: hr_analytics
+
+  # ── Overtime hours ─────────────────────────────────────────
+  - id: m_overtime_hours
+    kind: metric
+    name: Overtime Hours
+    description: >
+      Total overtime hours (PAYCODE_CODE = 'OT') from the daily punch
+      detail. Slicing by station/division/customer requires a join
+      through DIMHISTORYEMPLOYEE_V; the ontology join graph computes
+      the path automatically.
+    view: FACTDAILYWORKDETAILS_MS_V
+    expression: "SUM(CASE WHEN {alias}.PAYCODE_CODE = 'OT' THEN {alias}.PUNCH_HOURS ELSE 0 END)"
+    alias: OVERTIME_HOURS
+    unit: hours
+    sliceable_by:
+      - EMPLOYEE_ID
+      - APPLYDATE
+      - STATIONCODE        # via join j_workdetail_to_employee
+      - COSTCENTER         # via join j_workdetail_to_employee
+      - DIVISIONCODE       # via join j_workdetail_to_employee
+      - CUSTOMERCODE       # via join j_workdetail_to_employee
+      - DIVISIONNAME       # via two-hop j_workdetail_to_employee → j_employee_to_org
+      - CUSTOMERNAME       # via two-hop
+      - GRANDPARENTREGIONNAME
+    date_column: APPLYDATE
+    synonyms:
+      - overtime
+      - "overtime hours"
+      - "OT hours"
+      - OT
+      - "extra hours"
+    example_questions:
+      - "overtime hours at ATL"
+      - "stations with overtime more than 50 hours"
+      - "top 10 stations by overtime last month"
+    version: "1.0"
+    status: active
+    owner: workforce_analytics
