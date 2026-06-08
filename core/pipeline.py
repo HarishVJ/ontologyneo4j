@@ -9,6 +9,8 @@ from core.models import PipelineResponse, ExtractionResult
 from core.intent_extractor import extract, load_terms_from_neo4j
 from core.ontology_lookup import lookup_kpi, get_all_active_kpis
 from core.context_builder import build_context
+from core.requirement_checker import check_requirements
+from core.unknown_entity_detector import detect_unknown_entities, to_clarification
 from core.sql_generator import generate_sql
 from core.sql_validator import validate_sql
 from core.snowflake_executor import execute_sql
@@ -60,22 +62,68 @@ class NL2SQLPipeline:
                     question, f"KPI '{extraction.detected_kpi}' not found in ontology", latency
                 )
 
-            # Step 3: Context Building
+            # Step 3: Unknown Entity Detection
+            t0 = time.time()
+            unknown = detect_unknown_entities(question, extraction, recipe)
+            latency["unknown_entity_ms"] = round((time.time() - t0) * 1000, 1)
+
+            if unknown:
+                clarification = to_clarification(unknown)
+                return PipelineResponse(
+                    question=question,
+                    answer=clarification.question,
+                    detected_kpi=extraction.detected_kpi,
+                    extraction=asdict(extraction),
+                    neo4j_context={"kpi_id": recipe.id, "views": recipe.views, "steps": len(recipe.steps)},
+                    clarification_required=True,
+                    clarification=asdict(clarification),
+                    latency_ms=latency,
+                )
+
+            # Step 4: Requirement Check
+            t0 = time.time()
+            requirement_check = check_requirements(extraction, recipe)
+            latency["requirements_ms"] = round((time.time() - t0) * 1000, 1)
+
+            if requirement_check.status == "clarification" and requirement_check.clarification:
+                return PipelineResponse(
+                    question=question,
+                    answer=requirement_check.clarification.question,
+                    detected_kpi=extraction.detected_kpi,
+                    extraction=asdict(extraction),
+                    neo4j_context={"kpi_id": recipe.id, "views": recipe.views, "steps": len(recipe.steps)},
+                    clarification_required=True,
+                    clarification=asdict(requirement_check.clarification),
+                    latency_ms=latency,
+                )
+
+            if requirement_check.status == "unsupported":
+                return PipelineResponse(
+                    question=question,
+                    answer=requirement_check.unsupported_reason or "This request is not supported for the selected KPI.",
+                    detected_kpi=extraction.detected_kpi,
+                    extraction=asdict(extraction),
+                    neo4j_context={"kpi_id": recipe.id, "views": recipe.views, "steps": len(recipe.steps)},
+                    error=requirement_check.unsupported_reason,
+                    latency_ms=latency,
+                )
+
+            # Step 5: Context Building
             t0 = time.time()
             context = build_context(extraction, recipe)
             latency["context_ms"] = round((time.time() - t0) * 1000, 1)
 
-            # Step 4: SQL Generation
+            # Step 6: SQL Generation
             t0 = time.time()
             sql = generate_sql(context)
             latency["llm_ms"] = round((time.time() - t0) * 1000, 1)
 
-            # Step 5: SQL Validation
+            # Step 7: SQL Validation
             t0 = time.time()
             validation = validate_sql(sql, context, authorized_stations)
             latency["validation_ms"] = round((time.time() - t0) * 1000, 1)
 
-            # Step 6: Execution (only if validation passed)
+            # Step 8: Execution (only if validation passed)
             execution_result = {}
             if validation.status == "passed":
                 t0 = time.time()

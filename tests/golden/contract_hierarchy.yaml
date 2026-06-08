@@ -9,7 +9,7 @@ tests:
     question: "List all contracts for MSP"
     expected_kpi: "List Contracts"
     expected_terms:
-      station: MSP
+      stations: MSP
     expected_sql_contains:
       - "DIMFINANCEBUSINESSSTRUCTURE_V"
       - "CONTRACTCODE"
@@ -23,7 +23,7 @@ tests:
     question: "How many contracts are there in the Security division?"
     expected_kpi: "Count Contracts"
     expected_terms:
-      division: Security
+      divisions: Security
     expected_sql_contains:
       - "COUNT"
       - "DISTINCT"
@@ -43,7 +43,7 @@ tests:
     question: "List all customers at ATL"
     expected_kpi: "List Customers"
     expected_terms:
-      station: ATL
+      stations: ATL
     expected_sql_contains:
       - "CUSTOMERCODE"
       - "CUSTOMERNAME"
@@ -53,7 +53,7 @@ tests:
     question: "List all contracts for Central region"
     expected_kpi: "List Contracts"
     expected_terms:
-      region: Central
+      regions: Central
     expected_sql_contains:
       - "CONTRACTCODE"
       - "GRANDPARENTREGIONNAME"
@@ -62,7 +62,7 @@ tests:
     question: "What contracts does Delta have?"
     expected_kpi: "List Contracts"
     expected_terms:
-      customer: "Delta Air Lines"
+      customers: "Delta Air Lines"
     expected_sql_contains:
       - "CONTRACTCODE"
       - "CUSTOMERNAME"
@@ -88,8 +88,8 @@ tests:
     question: "How many contracts does Delta have at ATL?"
     expected_kpi: "Count Contracts"
     expected_terms:
-      station: ATL
-      customer: "Delta Air Lines"
+      stations: ATL
+      customers: "Delta Air Lines"
     expected_sql_contains:
       - "COUNT"
       - "CONTRACTCODE"
@@ -98,7 +98,17 @@ tests:
     question: "Show contracts for Ground Handling division"
     expected_kpi: "List Contracts"
     expected_terms:
-      division: "Ground Handling"
+      divisions: "Ground Handling"
     expected_sql_contains:
       - "CONTRACTCODE"
       - "DIVISIONNAME"
+
+  - id: gh_011
+    question: "Show contracts at MSP and ATL"
+    expected_kpi: "List Contracts"
+    expected_terms:
+      stations: MSP
+    expected_sql_contains:
+      - "STATIONCODE IN"
+      - "'MSP'"
+      - "'ATL'"

@@ -142,7 +142,13 @@ def _build_user_prompt(context: StructuredContext) -> str:
         parts.append(f"Order by: {', '.join(context.order_by)}")
 
     if context.grouping:
-        parts.append(f"Group by: {context.grouping}")
+        parts.append(f"Group by: {', '.join(context.grouping)}")
+
+    if context.limit:
+        parts.append(f"Limit: {context.limit} rows")
+
+    if context.thresholds:
+        parts.append(f"Metric thresholds (apply as HAVING or WHERE as appropriate): {', '.join(context.thresholds)}")
 
     return "\n".join(parts)
 

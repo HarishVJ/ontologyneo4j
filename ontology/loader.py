@@ -3,6 +3,7 @@ Ontology Loader: reads YAML definitions and loads them into Neo4j.
 Idempotent — uses MERGE to create-or-update. Safe to re-run.
 """
 
+import json
 import yaml
 from pathlib import Path
 from core.neo4j_client import get_driver
@@ -41,13 +42,16 @@ def _load_views() -> int:
         for view in data.get("views", []):
             columns = [c["name"] for c in view.get("columns", [])]
             aliases = view.get("approved_aliases", [])
+            unsupported = view.get("unsupported_term_categories", [])
             session.run(
                 "MERGE (v:View {name: $name}) "
                 "SET v.schema=$schema, v.alias=$alias, v.description=$desc, "
-                "v.columns=$columns, v.column_count=$cc, v.approved_aliases=$aliases",
+                "v.columns=$columns, v.column_count=$cc, v.approved_aliases=$aliases, "
+                "v.date_column=$dc, v.unsupported_term_categories=$unsupported",
                 {"name": view["name"], "schema": view.get("schema",""),
                  "alias": view.get("alias",""), "desc": view.get("description",""),
-                 "columns": columns, "cc": len(columns), "aliases": aliases},
+                 "columns": columns, "cc": len(columns), "aliases": aliases,
+                 "dc": view.get("date_column"), "unsupported": unsupported},
             )
             count += 1
     logger.info("views_loaded", count=count)
@@ -115,13 +119,33 @@ def _load_terms() -> int:
         for category in data.get("categories", []):
             cat_name = category["name"]
             cat_column = category.get("column")
+            # Persist TermCategory node with metadata
+            session.run(
+                "MERGE (tc:TermCategory {name: $name}) "
+                "SET tc.column=$col, tc.value_kind=$vk, tc.match_type=$mt, "
+                "tc.threshold=$th, tc.priority=$pr, tc.extractable=$ex, "
+                "tc.groupable=$gb, tc.pattern=$pt, tc.conflicts_with=$cw, tc.description=$desc",
+                {"name": cat_name, "col": cat_column,
+                 "vk": category.get("value_kind", ""),
+                 "mt": category.get("match_type", ""),
+                 "th": category.get("threshold") if category.get("threshold") is not None else -1,
+                 "pr": category.get("priority") if category.get("priority") is not None else -1,
+                 "ex": category.get("extractable", True),
+                 "gb": category.get("groupable", False),
+                 "pt": category.get("pattern", ""),
+                 "cw": category.get("conflicts_with", []),
+                 "desc": category.get("description", "")},
+            )
+            # Relate terms to category and persist them
             for term in category.get("terms", []):
                 session.run(
                     "MERGE (t:Term {code: $code, category: $cat}) "
-                    "SET t.canonical=$canonical, t.column=$col, t.context=$ctx",
+                    "SET t.canonical=$canonical, t.column=$col, t.context=$ctx "
+                    "WITH t MATCH (tc:TermCategory {name: $cat}) "
+                    "MERGE (t)-[:IN_CATEGORY]->(tc)",
                     {"code": term["code"], "cat": cat_name,
                      "canonical": term.get("canonical", term["code"]),
-                     "col": cat_column, "ctx": term.get("context","")},
+                     "col": cat_column, "ctx": term.get("context", "")},
                 )
                 count += 1
     logger.info("terms_loaded", count=count)
@@ -139,12 +163,16 @@ def _load_kpis() -> int:
             for kpi in data.get("kpis", []):
                 # Create KPI node
                 output_shape = kpi.get("output_shape", {})
+                dimension_rules = kpi.get("dimensions", {})
+                required_context = kpi.get("required_context", {})
                 session.run(
                     "MERGE (k:KPI {id: $id}) "
                     "SET k.name=$name, k.description=$desc, k.complexity=$cx, "
                     "k.formula=$formula, k.version=$ver, k.status=$status, "
                     "k.owner=$owner, k.valid_from=$vf, "
-                    "k.output_shape_type=$ost, k.output_columns=$oc, k.order_by=$ob",
+                    "k.output_shape_type=$ost, k.output_columns=$oc, k.order_by=$ob, "
+                    "k.grain=$grain, k.dimension_rules_json=$dimension_rules_json, "
+                    "k.required_context_json=$required_context_json",
                     {"id": kpi["id"], "name": kpi["name"],
                      "desc": kpi.get("description",""), "cx": kpi.get("complexity","simple"),
                      "formula": kpi.get("formula",""), "ver": kpi.get("version","1.0"),
@@ -152,7 +180,20 @@ def _load_kpis() -> int:
                      "vf": kpi.get("valid_from",""),
                      "ost": output_shape.get("type","list"),
                      "oc": output_shape.get("columns",[]),
-                     "ob": output_shape.get("order_by",[])},
+                     "ob": output_shape.get("order_by",[]),
+                     "grain": kpi.get("grain", []),
+                     "dimension_rules_json": json.dumps(dimension_rules),
+                     "required_context_json": json.dumps(required_context)},
+                )
+                # Set supported term categories + ranking defaults
+                supp = kpi.get("supported_term_categories", [])
+                session.run(
+                    "MATCH (k:KPI {id:$kid}) "
+                    "SET k.supported_term_categories=$supp, "
+                    "k.default_ranking_metric=$drm, k.default_ranking_order=$dro",
+                    {"kid": kpi["id"], "supp": supp,
+                     "drm": kpi.get("default_ranking_metric"),
+                     "dro": kpi.get("default_ranking_order", "DESC")},
                 )
                 # Link KPI → View
                 for view_name in kpi.get("views", []):

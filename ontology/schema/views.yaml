@@ -8,6 +8,7 @@ views:
   - name: DIMFINANCEBUSINESSSTRUCTURE_V
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: b
+    date_column: null
     description: "Denormalized org hierarchy — 11 levels from GrandParentRegion to Contract"
     columns:
       # Level 1: Grand Parent Region
@@ -52,6 +53,7 @@ views:
   - name: AGGEMPCOUNT_ATTRITION_DATA_V_Table
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: a
+    date_column: DATE
     description: "Pre-aggregated headcount and termination counts by station and cost center over time. Used for attrition/turnover analytics."
     approved_aliases:
       - ATTRITION_RATE_PCT
@@ -71,6 +73,7 @@ views:
   - name: DIMHISTORYEMPLOYEE_V
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: e
+    date_column: HIREDATE
     description: "Employee dimension — current and historical employee records with status, hire/term dates, org assignment, and manager chain."
     columns:
       # Identity
@@ -119,6 +122,7 @@ views:
   - name: FACTDAILYWORKDETAILS_MS_V
     schema: AIRCO_EDW_UAT.ILINKAICHAT
     alias: w
+    date_column: APPLYDATE
     description: "Daily work/punch detail fact table — one row per employee per pay code per day. Used for hours, overtime, and attendance analytics."
     columns:
       - { name: EMPLOYEE_ID,            type: VARCHAR(20),       description: "Employee identifier — join key to DIMHISTORYEMPLOYEE_V", nullable: false }

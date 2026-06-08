@@ -1,7 +1,7 @@
 # Golden tests for Attrition KPI domain
 # Each test validates: detected KPI, SQL contains expected fragments, validation passes
 
-golden_tests:
+tests:
   - id: attrition_rate_station_ytd
     question: "What is the attrition rate at MSP YTD?"
     expected_kpi: "Attrition Rate"

@@ -20,6 +20,43 @@ kpis:
     complexity: medium
     formula: "(SUM(TOTAL_TERMINATION) / NULLIF(SUM(EMPLOYEE_HEADCOUNT_ATTRITION), 0)) * (365.0 / GREATEST(DATEDIFF(day, MIN(DATE), MAX(DATE)), 1)) * 100 AS ATTRITION_RATE_PCT"
     views: [AGGEMPCOUNT_ATTRITION_DATA_V_Table]
+    grain: [DATE, STATIONCODE, COSTCENTER]
+    dimensions:
+      stations:
+        column: STATIONCODE
+        filterable: true
+        groupable: true
+        support_type: native
+        required: false
+      costcenter:
+        column: COSTCENTER
+        filterable: true
+        groupable: true
+        support_type: native
+        required: false
+      customers:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition data is aggregated by date, station, and cost center; customer grain is not available."
+      regions:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition data does not currently include an approved station-to-region join path."
+      divisions:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition data does not currently include an approved station-to-division join path."
+    required_context:
+      period:
+        required: false
+        default: all_available_dates
+      scope:
+        required: false
+        one_of: [stations, costcenter]
+        clarification_prompt: "Do you want attrition for a specific station or cost center?"
     steps:
       - order: 1
         name: "apply_filters"
@@ -41,6 +78,7 @@ kpis:
       - { column: DATE, source: detected_period, operator: ">=" }
       - { column: STATIONCODE, source: detected_station, operator: "=" }
       - { column: COSTCENTER, source: detected_costcenter, operator: "=" }
+    supported_term_categories: [stations, costcenter, attrition_period]
     output_shape:
       type: aggregate
       columns: [STATIONCODE, TOTAL_TERMINATIONS, TOTAL_HEADCOUNT, DAYS_IN_PERIOD, ATTRITION_RATE_PCT]
@@ -87,6 +125,43 @@ kpis:
       FROM period_data
       ORDER BY ATTRITION_RATE_PCT DESC NULLS LAST
     views: [AGGEMPCOUNT_ATTRITION_DATA_V_Table]
+    grain: [DATE, STATIONCODE, COSTCENTER]
+    dimensions:
+      stations:
+        column: STATIONCODE
+        filterable: true
+        groupable: true
+        support_type: native
+        required: false
+      costcenter:
+        column: COSTCENTER
+        filterable: true
+        groupable: true
+        support_type: native
+        required: false
+      customers:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition detail data is aggregated by date, station, and cost center; customer grain is not available."
+      regions:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition detail data does not currently include an approved station-to-region join path."
+      divisions:
+        filterable: false
+        groupable: false
+        support_type: unsupported
+        reason: "Attrition detail data does not currently include an approved station-to-division join path."
+    required_context:
+      period:
+        required: false
+        default: all_available_dates
+      scope:
+        required: false
+        one_of: [stations, costcenter]
+        clarification_prompt: "Do you want attrition for a specific station or cost center?"
     steps:
       - order: 1
         name: "period_data_cte"
@@ -108,6 +183,7 @@ kpis:
       - { column: DATE, source: detected_period, operator: ">=" }
       - { column: STATIONCODE, source: detected_station, operator: "=" }
       - { column: COSTCENTER, source: detected_costcenter, operator: "=" }
+    supported_term_categories: [stations, costcenter, attrition_period]
     output_shape:
       type: aggregate
       columns: [STATIONCODE, COSTCENTER, TOTAL_TERMINATIONS, TOTAL_HEADCOUNT, DAYS_IN_PERIOD, ATTRITION_RATE_PCT]

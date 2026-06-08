@@ -15,6 +15,8 @@ class AskResponse(BaseModel):
     validation: dict[str, Any] = {}
     execution: dict[str, Any] = {}
     has_more: bool = False
+    clarification_required: bool = False
+    clarification: dict[str, Any] = {}
     error: str | None = None
     latency_ms: dict[str, float] = {}
 

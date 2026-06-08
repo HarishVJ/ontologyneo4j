@@ -1,6 +1,7 @@
 """
 Context builder: transforms Neo4j KPI recipe + extracted terms
 into a compact structured context for the LLM SQL generator.
+Fully generic: filter emission and rejection are driven by ontology metadata.
 """
 
 import yaml
@@ -12,17 +13,35 @@ from core.models import (
     StructuredContext,
     ViewMetadata,
 )
-from core.ontology_lookup import get_view_metadata
+from core.ontology_lookup import get_view_metadata, get_joins_between_views
 from config.settings import get_settings
 from config.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 # ─── Authoritative view registry from views.yaml ───────────────────────────
-# This is the SINGLE SOURCE OF TRUTH for view names and metadata.
-# If Neo4j returns a stale/old name, this registry overrides it.
 _VIEWS_YAML = Path(__file__).resolve().parent.parent / "ontology" / "schema" / "views.yaml"
-_VIEW_REGISTRY: dict[str, dict] = {}  # canonical_name → view dict
+_VIEW_REGISTRY: dict[str, dict] = {}
+
+# Friendly labels for term categories (used in rejection messages)
+_CATEGORY_LABELS = {
+    "stations": "station",
+    "customers": "customer",
+    "regions": "region",
+    "divisions": "division",
+    "entities": "legal entity",
+    "costcenter": "cost center",
+    "attrition_period": "time period",
+    "sub_regions": "sub-region",
+    "service_types": "line of service",
+    "departments": "department",
+    "cities": "city",
+    "states": "state",
+    "postal_codes": "postal code",
+    "employment_status": "employment status",
+    "employment_type": "employment type",
+    "pay_code": "pay code",
+}
 
 
 def _load_view_registry() -> None:
@@ -39,6 +58,8 @@ def _load_view_registry() -> None:
                 "alias": view.get("alias", ""),
                 "columns": [c["name"] for c in view.get("columns", [])],
                 "approved_aliases": view.get("approved_aliases", []),
+                "date_column": view.get("date_column"),
+                "unsupported_term_categories": view.get("unsupported_term_categories", []),
             }
         logger.info("view_registry_loaded", count=len(_VIEW_REGISTRY))
     except Exception as e:
@@ -49,14 +70,10 @@ _load_view_registry()
 
 
 def _resolve_view_name(neo4j_name: str) -> str:
-    """Resolve a view name from Neo4j against the authoritative YAML registry.
-    Returns the canonical name from views.yaml — fixes stale/renamed references.
-    """
+    """Resolve a view name from Neo4j against the authoritative YAML registry."""
     upper = neo4j_name.upper()
-    # Exact match
     if upper in _VIEW_REGISTRY:
         return _VIEW_REGISTRY[upper]["name"]
-    # Prefix match: Neo4j has old truncated name, YAML has the full new name
     for canonical_upper, view_data in _VIEW_REGISTRY.items():
         if canonical_upper.startswith(upper) and canonical_upper != upper:
             logger.warning(
@@ -65,33 +82,46 @@ def _resolve_view_name(neo4j_name: str) -> str:
                 canonical_name=view_data["name"],
             )
             return view_data["name"]
-    # No match — return as-is
     return neo4j_name
 
-# Columns that exist in AGGEMPCOUNT_ATTRITION_DATA_V_Table only
-_ATTRITION_VIEW = "AGGEMPCOUNT_ATTRITION_DATA_V_Table"
-_ATTRITION_SUPPORTED_FILTER_CATEGORIES = {"station", "costcenter", "attrition_period"}
-_ATTRITION_UNSUPPORTED_LABELS = {
-    "customer": "customer",
-    "region": "region",
-    "division": "division",
-    "entity": "legal entity",
-}
+
+def _build_filter(term, date_column: str | None = None) -> str | None:
+    """Emit a filter SQL fragment based on term.value_kind.
+    value_kind: code | canonical -> column = 'value'
+    value_kind: sql_expr          -> append value directly (pre-built SQL)
+    {date_col} placeholders are bound to the view's date_column if provided.
+    """
+    if not term.column and term.value_kind != "sql_expr":
+        return None
+
+    if term.value_kind == "sql_expr":
+        sql = term.value
+        # Bind generic {date_col} placeholder
+        if date_column and "{date_col}" in sql:
+            sql = sql.replace("{date_col}", date_column)
+        # Legacy: attrition_period terms used hardcoded DATE column
+        elif term.category == "attrition_period" and date_column and "DATE" in sql:
+            sql = sql.replace("DATE", date_column)
+        return sql
+
+    # code | canonical | default -> equality filter
+    return f"{term.column} = '{term.value}'"
 
 
 def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> StructuredContext:
     """Build structured LLM context from extraction result and KPI recipe."""
     settings = get_settings()
 
-    # Resolve view metadata — views.yaml registry is authoritative for names
+    # ── 1. Resolve view metadata ────────────────────────────────────────────
     views_data = []
     resolved_view_names = []
+    all_unsupported: set[str] = set()
+    date_columns: dict[str, str | None] = {}
+
     for view_name in recipe.views:
-        # Step 1: resolve the name from YAML registry (fixes stale Neo4j names)
         canonical_name = _resolve_view_name(view_name)
         resolved_view_names.append(canonical_name)
 
-        # Step 2: try local YAML registry first (always up-to-date)
         reg = _VIEW_REGISTRY.get(canonical_name.upper())
         if reg:
             views_data.append({
@@ -101,8 +131,9 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                 "schema": reg["schema"],
                 "approved_aliases": reg.get("approved_aliases", []),
             })
+            date_columns[canonical_name] = reg.get("date_column")
+            all_unsupported.update(reg.get("unsupported_term_categories", []))
         else:
-            # Fallback to Neo4j metadata
             meta = get_view_metadata(canonical_name)
             if meta:
                 views_data.append({
@@ -112,6 +143,8 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                     "schema": meta.schema,
                     "approved_aliases": meta.approved_aliases,
                 })
+                date_columns[canonical_name] = meta.date_column
+                all_unsupported.update(meta.unsupported_term_categories)
             else:
                 views_data.append({
                     "name": canonical_name,
@@ -120,61 +153,108 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
                     "schema": settings.snowflake_schema_prefix,
                     "approved_aliases": [],
                 })
+                date_columns[canonical_name] = None
 
-    # Guard: attrition KPIs only support station/costcenter/period filters
-    is_attrition_kpi = _ATTRITION_VIEW in resolved_view_names
-    if is_attrition_kpi:
-        unsupported = [
-            _ATTRITION_UNSUPPORTED_LABELS[t.category]
-            for t in extraction.detected_terms.values()
-            if t.category in _ATTRITION_UNSUPPORTED_LABELS
+    # ── 2. Metadata-driven explicit rejection ───────────────────────────────
+    supported = set(recipe.supported_term_categories)
+    if supported:
+        unsupported_detected = [
+            t for t in extraction.detected_terms.values()
+            if t.category not in supported
         ]
-        if unsupported:
-            dims = ", ".join(sorted(set(unsupported)))
+        if unsupported_detected:
+            labels = sorted(set(
+                _CATEGORY_LABELS.get(t.category, t.category.replace("_", " "))
+                for t in unsupported_detected
+            ))
+            dims = ", ".join(labels)
             raise ValueError(
-                f"Attrition data is only available at station and cost-center level. "
+                f"{recipe.name} data is only available at a limited set of dimensions. "
                 f"Filtering by {dims} is not supported. "
-                f"Try: 'What is the attrition rate at MSP?' or "
-                f"'Show attrition for cost center 641 YTD'."
+                f"Try a query using the supported dimensions instead."
             )
 
-    # Build filter conditions from extracted terms
+    # Also reject terms that the view itself declares unsupported
+    if all_unsupported:
+        view_unsupported = [
+            t for t in extraction.detected_terms.values()
+            if t.category in all_unsupported
+        ]
+        if view_unsupported:
+            labels = sorted(set(
+                _CATEGORY_LABELS.get(t.category, t.category.replace("_", " "))
+                for t in view_unsupported
+            ))
+            dims = ", ".join(labels)
+            raise ValueError(
+                f"The data source for {recipe.name} does not include {dims} information. "
+                f"Try a different query or KPI."
+            )
+
+    # ── 3. Build generic filters from extracted terms ───────────────────────
+    # Pick the primary date column from the first view that has one
+    primary_date_col = next((c for c in date_columns.values() if c), None)
     filters = []
-    for term_key, term in extraction.detected_terms.items():
-        if term.column:
-            if term.category == "costcenter":
-                filters.append(f"{term.column} = '{term.value}'")
-            elif term.category == "station":
-                filters.append(f"STATIONCODE = '{term.value}'")
-            elif term.category == "customer":
-                filters.append(f"CUSTOMERNAME = '{term.value}'")
-            elif term.category == "region":
-                filters.append(f"GRANDPARENTREGIONNAME = '{term.value}'")
-            elif term.category == "division":
-                filters.append(f"DIVISIONNAME = '{term.value}'")
-            elif term.category == "entity":
-                filters.append(f"ENTITYDESCRIPTION = '{term.value}'")
-            elif term.category == "attrition_period":
-                filters.append(term.value)  # pre-built SQL date filter string
 
-    # Build step descriptions
+    # Group terms by category to emit IN(...) for multi-value queries
+    terms_by_category: dict[str, list[DetectedTerm]] = {}
+    for term in extraction.detected_terms.values():
+        terms_by_category.setdefault(term.category, []).append(term)
+
+    for cat, terms in terms_by_category.items():
+        if len(terms) == 1:
+            filt = _build_filter(terms[0], date_column=primary_date_col)
+            if filt:
+                filters.append(filt)
+        else:
+            # Multi-value: build IN clause for code/canonical categories
+            if terms[0].value_kind == "sql_expr":
+                for term in terms:
+                    filt = _build_filter(term, date_column=primary_date_col)
+                    if filt:
+                        filters.append(filt)
+            else:
+                col = terms[0].column
+                if col:
+                    values = [f"'{t.value}'" for t in terms]
+                    filters.append(f"{col} IN ({', '.join(values)})")
+
+    # ── 4. Resolve joins for multi-view KPIs ────────────────────────────────
+    joins = get_joins_between_views(resolved_view_names) if len(resolved_view_names) > 1 else []
+
+    # ── 5. Build steps, grouping & limit ──────────────────────────────────
     steps = [f"Step {s.order}: {s.logic}" for s in recipe.steps]
-
-    # Determine grouping from context
     grouping = extraction.detected_grouping
+    # Bind {date_col} placeholders in time-grouping expressions
+    if primary_date_col:
+        grouping = [
+            g.replace("{date_col}", primary_date_col) if "{date_col}" in g else g
+            for g in grouping
+        ]
+    limit = extraction.detected_limit
+
+    # If top-N requested but no explicit order_by, inject recipe default
+    order_by = recipe.output_shape.order_by if recipe.output_shape else []
+    if limit and not order_by and recipe.default_ranking_metric:
+        order_by = [f"{recipe.default_ranking_metric} {recipe.default_ranking_order}"]
+
+    # Threshold filters (HAVING / WHERE depending on metric aggregation)
+    threshold_filters = [t.sql_expr for t in extraction.detected_thresholds]
 
     context = StructuredContext(
         kpi_name=recipe.name,
         kpi_id=recipe.id,
         formula=recipe.formula,
         views=views_data,
-        joins=[],  # Single view for contract hierarchy — no joins needed
+        joins=joins,
         filters=filters,
         steps=steps,
         output_columns=recipe.output_shape.columns if recipe.output_shape else [],
-        order_by=recipe.output_shape.order_by if recipe.output_shape else [],
+        order_by=order_by,
         schema_prefix=settings.snowflake_schema_prefix,
         grouping=grouping,
+        limit=limit,
+        thresholds=threshold_filters,
     )
 
     logger.info(
@@ -182,5 +262,6 @@ def build_context(extraction: ExtractionResult, recipe: KPIRecipe) -> Structured
         kpi=recipe.name,
         filters=len(filters),
         views=len(views_data),
+        joins=len(joins),
     )
     return context

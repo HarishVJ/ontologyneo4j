@@ -2,14 +2,32 @@
 # Term Dictionary
 # Maps business vocabulary to Snowflake column values.
 # To add new terms: add entries here and re-run seed_ontology.py
+#
+# Per-category metadata drives the generic extraction engine:
+#   value_kind    : code | canonical | sql_expr  — what DetectedTerm.value holds
+#   match_type    : exact | fuzzy_token | fuzzy_partial | numeric_regex | date_pattern
+#   threshold     : fuzzy match cutoff (0-100); ignored for exact/numeric_regex
+#   priority      : detection order; higher numbers detected first
+#   extractable   : true => participates in intent extraction; false => reference_only
+#   pattern       : regex for numeric_regex / date_pattern types
+#   conflicts_with: list of category names to skip if this category matches first
 # ============================================================
 
 categories:
   - name: stations
     column: STATIONCODE
+    value_kind: code
+    match_type: exact
+    threshold: 100
+    priority: 10
+    extractable: true
+    groupable: true
+    pattern: null
+    conflicts_with: [customers]
     description: "Airport/station codes recognized by the system"
     terms:
       - { code: ATL, canonical: "Atlanta" }
+      - { code: BOH, canonical: "BOH" }
       - { code: MSP, canonical: "Minneapolis" }
       - { code: JFK, canonical: "New York JFK" }
       - { code: LAX, canonical: "Los Angeles" }
@@ -33,6 +51,14 @@ categories:
 
   - name: customers
     column: CUSTOMERNAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 9
+    extractable: true
+    groupable: true
+    pattern: null
+    conflicts_with: [stations]
     description: "Customer/airline names"
     terms:
       - { code: Delta, canonical: "Delta Air Lines" }
@@ -48,6 +74,13 @@ categories:
 
   - name: regions
     column: GRANDPARENTREGIONNAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 7
+    extractable: true
+    groupable: true
+    pattern: null
     description: "Grand parent region names"
     terms:
       - { code: Central, canonical: "Central" }
@@ -58,6 +91,13 @@ categories:
 
   - name: divisions
     column: DIVISIONNAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 6
+    extractable: true
+    groupable: true
+    pattern: null
     description: "Division names"
     terms:
       - { code: Security, canonical: "Security" }
@@ -68,6 +108,13 @@ categories:
 
   - name: entities
     column: ENTITYDESCRIPTION
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 5
+    extractable: true
+    groupable: true
+    pattern: null
     description: "Legal entity names"
     terms:
       - { code: Unifi, canonical: "Unifi" }
@@ -75,45 +122,27 @@ categories:
 
   - name: abbreviations
     column: null
-    description: "Unifi business acronyms, synonyms, and abbreviations"
+    value_kind: null
+    match_type: null
+    threshold: null
+    priority: null
+    extractable: false
+    pattern: null
+    description: "Unifi business acronyms, synonyms, and abbreviations — reference only"
     terms:
-      # Workforce metrics
       - { code: HC, canonical: "Headcount", context: "employee count metric" }
       - { code: FTE, canonical: "Full-Time Equivalent", context: "adjusted headcount metric" }
-      # Employment types
-      - { code: FT, canonical: "Full-Time", context: "EMPLOYMENTTYPECODE = 'FT'" }
-      - { code: PT, canonical: "Part-Time", context: "EMPLOYMENTTYPECODE = 'PT'" }
-      # Employee status
-      - { code: A, canonical: "Active", context: "EMPLOYMENTSTATUSCODE = 'A'" }
-      - { code: T, canonical: "Terminated", context: "EMPLOYMENTSTATUSCODE = 'T'" }
-      - { code: L, canonical: "Leave", context: "EMPLOYMENTSTATUSCODE = 'L'" }
-      - { code: S, canonical: "Suspended", context: "EMPLOYMENTSTATUSCODE = 'S'" }
-      # Pay codes (hours)
-      - { code: OT, canonical: "Overtime", context: "PAYCODE_CODE = 'OT'" }
-      - { code: REG, canonical: "Regular Hours", context: "PAYCODE_CODE = 'REG'" }
-      - { code: HOL, canonical: "Holiday", context: "PAYCODE_CODE = 'HOL'" }
-      - { code: PTO, canonical: "Paid Time Off", context: "PAYCODE_CODE = 'PTO'" }
-      # Station shortcuts (aliases beyond IATA codes)
-      - { code: ATL, canonical: "Atlanta", context: "STATIONCODE = 'ATL'" }
-      - { code: MSP, canonical: "Minneapolis", context: "STATIONCODE = 'MSP'" }
-      - { code: JFK, canonical: "New York JFK", context: "STATIONCODE = 'JFK'" }
-      - { code: LAX, canonical: "Los Angeles", context: "STATIONCODE = 'LAX'" }
-      # Customer shortcuts
-      - { code: DL, canonical: "Delta Air Lines", context: "CUSTOMERCODE or CUSTOMERNAME" }
-      - { code: AS, canonical: "Alaska Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
-      - { code: UA, canonical: "United Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
-      - { code: AA, canonical: "American Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
-      - { code: WN, canonical: "Southwest Airlines", context: "CUSTOMERCODE or CUSTOMERNAME" }
-      # Attrition / Turnover
-      - { code: YTD, canonical: "Year To Date", context: "DATE >= DATE_TRUNC('year', CURRENT_DATE)" }
-      - { code: MTD, canonical: "Month To Date", context: "DATE >= DATE_TRUNC('month', CURRENT_DATE)" }
-      - { code: QTD, canonical: "Quarter To Date", context: "DATE >= DATE_TRUNC('quarter', CURRENT_DATE)" }
-      # Org hierarchy
       - { code: LOS, canonical: "Line of Service", context: "service type level in org hierarchy" }
       - { code: CC, canonical: "Cost Center", context: "COSTCENTER column" }
 
   - name: kpi_synonyms
     column: null
+    value_kind: kpi_synonym
+    match_type: fuzzy_partial
+    threshold: 78
+    priority: 20
+    extractable: true
+    pattern: null
     description: "Natural language phrases that map to KPI identifiers"
     terms:
       # Contract listing
@@ -150,6 +179,41 @@ categories:
       - { code: "which region", canonical: "Hierarchy Lookup" }
       - { code: "hierarchy", canonical: "Hierarchy Lookup" }
       - { code: "org structure", canonical: "Hierarchy Lookup" }
+      # Employee count KPI synonyms
+      - { code: "how many employees", canonical: "Employee Count" }
+      - { code: "employee count", canonical: "Employee Count" }
+      - { code: "headcount", canonical: "Employee Count" }
+      - { code: "number of employees", canonical: "Employee Count" }
+      - { code: "total employees", canonical: "Employee Count" }
+      - { code: "active employees", canonical: "Employee Count" }
+      - { code: "employee headcount", canonical: "Employee Count" }
+      - { code: "count employees", canonical: "Employee Count" }
+      - { code: "list employees", canonical: "Employee List" }
+      - { code: "show employees", canonical: "Employee List" }
+      - { code: "employees at", canonical: "Employee List" }
+      - { code: "who works at", canonical: "Employee List" }
+      - { code: "employee details", canonical: "Employee List" }
+      # Termination KPI synonyms
+      - { code: "how many terminations", canonical: "Termination Count" }
+      - { code: "termination count", canonical: "Termination Count" }
+      - { code: "number of terminations", canonical: "Termination Count" }
+      - { code: "who was terminated", canonical: "Termination List" }
+      - { code: "employees who left", canonical: "Termination List" }
+      - { code: "list terminations", canonical: "Termination List" }
+      - { code: "show terminations", canonical: "Termination List" }
+      # Hours / Overtime KPI synonyms
+      - { code: "hours worked", canonical: "Hours Summary" }
+      - { code: "total hours", canonical: "Hours Summary" }
+      - { code: "overtime hours", canonical: "Hours Summary" }
+      - { code: "regular hours", canonical: "Hours Summary" }
+      - { code: "holiday hours", canonical: "Hours Summary" }
+      - { code: "pto hours", canonical: "Hours Summary" }
+      - { code: "hours by station", canonical: "Hours Summary" }
+      - { code: "hours summary", canonical: "Hours Summary" }
+      - { code: "overtime rate", canonical: "Overtime Rate" }
+      - { code: "ot rate", canonical: "Overtime Rate" }
+      - { code: "overtime percentage", canonical: "Overtime Rate" }
+      - { code: "ot percentage", canonical: "Overtime Rate" }
       # Attrition KPI synonyms
       - { code: "attrition rate", canonical: "Attrition Rate" }
       - { code: "attrition", canonical: "Attrition Rate" }
@@ -168,6 +232,12 @@ categories:
 
   - name: attrition_period
     column: DATE
+    value_kind: sql_expr
+    match_type: fuzzy_partial
+    threshold: 85
+    priority: 8
+    extractable: true
+    pattern: null
     description: "Time period terms for attrition queries — mapped to Snowflake DATE filter SQL"
     terms:
       - code: "this month"
@@ -212,3 +282,136 @@ categories:
       - code: "q4"
         canonical: "Q4"
         context: "MONTH(DATE) IN (10, 11, 12) AND YEAR(DATE) = YEAR(CURRENT_DATE)"
+
+  - name: costcenter
+    column: COSTCENTER
+    value_kind: code
+    match_type: numeric_regex
+    threshold: null
+    priority: 4
+    extractable: true
+    groupable: true
+    pattern: "\\b(\\d{3,10})\\b"
+    description: "Cost center codes — detected as 3-10 digit numbers near the phrase 'cost center'"
+    terms: []
+
+  - name: sub_regions
+    column: SUBREGIONNAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 6
+    extractable: true
+    groupable: true
+    pattern: null
+    description: "Sub-region names"
+    terms: []
+
+  - name: service_types
+    column: SERVICETYPENAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 5
+    extractable: true
+    groupable: true
+    pattern: null
+    description: "Line of Service / Service type names"
+    terms: []
+
+  - name: departments
+    column: DEPARTMENTNAME
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 5
+    extractable: true
+    groupable: true
+    pattern: null
+    description: "Department names"
+    terms: []
+
+  - name: cities
+    column: WORKCITY
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 4
+    extractable: true
+    groupable: true
+    pattern: null
+    description: "Work city names"
+    terms: []
+
+  - name: states
+    column: WORKSTATE
+    value_kind: canonical
+    match_type: fuzzy_token
+    threshold: 80
+    priority: 4
+    extractable: true
+    groupable: true
+    pattern: null
+    description: "Work state names"
+    terms: []
+
+  - name: postal_codes
+    column: WORKPOSTALCODE
+    value_kind: code
+    match_type: numeric_regex
+    threshold: null
+    priority: 3
+    extractable: true
+    groupable: true
+    pattern: "\\b(\\d{5}(-\\d{4})?)\\b"
+    description: "Work postal / ZIP codes"
+    terms: []
+
+  - name: employment_status
+    column: null
+    value_kind: sql_expr
+    match_type: fuzzy_partial
+    threshold: 85
+    priority: 5
+    extractable: true
+    groupable: false
+    pattern: null
+    description: "Employee employment status filters — emit SQL directly"
+    terms:
+      - { code: "active", canonical: "Active", context: "EMPLOYMENTSTATUSCODE = 'A'" }
+      - { code: "terminated", canonical: "Terminated", context: "EMPLOYMENTSTATUSCODE = 'T'" }
+      - { code: "leave", canonical: "Leave", context: "EMPLOYMENTSTATUSCODE = 'L'" }
+      - { code: "suspended", canonical: "Suspended", context: "EMPLOYMENTSTATUSCODE = 'S'" }
+
+  - name: employment_type
+    column: null
+    value_kind: sql_expr
+    match_type: fuzzy_partial
+    threshold: 85
+    priority: 5
+    extractable: true
+    groupable: false
+    pattern: null
+    description: "Employee employment type filters — full-time, part-time"
+    terms:
+      - { code: "full-time", canonical: "Full-Time", context: "EMPLOYMENTTYPECODE = 'FT'" }
+      - { code: "full time", canonical: "Full-Time", context: "EMPLOYMENTTYPECODE = 'FT'" }
+      - { code: "part-time", canonical: "Part-Time", context: "EMPLOYMENTTYPECODE = 'PT'" }
+      - { code: "part time", canonical: "Part-Time", context: "EMPLOYMENTTYPECODE = 'PT'" }
+
+  - name: pay_code
+    column: null
+    value_kind: sql_expr
+    match_type: fuzzy_partial
+    threshold: 85
+    priority: 5
+    extractable: true
+    groupable: false
+    pattern: null
+    description: "Pay code / hour type filters — overtime, regular, holiday, PTO"
+    terms:
+      - { code: "overtime", canonical: "Overtime", context: "PAYCODE_CODE = 'OT'" }
+      - { code: "regular", canonical: "Regular Hours", context: "PAYCODE_CODE = 'REG'" }
+      - { code: "holiday", canonical: "Holiday", context: "PAYCODE_CODE = 'HOL'" }
+      - { code: "pto", canonical: "Paid Time Off", context: "PAYCODE_CODE = 'PTO'" }
+      - { code: "paid time off", canonical: "Paid Time Off", context: "PAYCODE_CODE = 'PTO'" }

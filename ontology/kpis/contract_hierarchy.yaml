@@ -26,6 +26,7 @@ kpis:
       - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
       - { column: DIVISIONNAME, source: detected_division, operator: "=" }
       - { column: ENTITYDESCRIPTION, source: detected_entity, operator: "=" }
+    supported_term_categories: [stations, customers, regions, divisions, entities]
     output_shape:
       type: list
       columns: [CONTRACTCODE, CONTRACTNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME]
@@ -57,6 +58,7 @@ kpis:
       - { column: CUSTOMERNAME, source: detected_customer, operator: "=" }
       - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
       - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+    supported_term_categories: [stations, customers, regions, divisions]
     output_shape:
       type: aggregate
       columns: [group_by_field, contract_count]
@@ -86,6 +88,7 @@ kpis:
       - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
       - { column: DIVISIONNAME, source: detected_division, operator: "=" }
       - { column: ENTITYDESCRIPTION, source: detected_entity, operator: "=" }
+    supported_term_categories: [regions, divisions, entities]
     output_shape:
       type: list
       columns: [STATIONCODE, STATIONNAME]
@@ -116,6 +119,7 @@ kpis:
       - { column: STATIONCODE, source: detected_station, operator: "=" }
       - { column: GRANDPARENTREGIONNAME, source: detected_region, operator: "=" }
       - { column: DIVISIONNAME, source: detected_division, operator: "=" }
+    supported_term_categories: [stations, regions, divisions]
     output_shape:
       type: list
       columns: [CUSTOMERCODE, CUSTOMERNAME]
@@ -145,6 +149,7 @@ kpis:
       - { column: COSTCENTER, source: detected_costcenter, operator: "=" }
       - { column: CONTRACTCODE, source: detected_contract, operator: "=" }
       - { column: CONTRACTNAME, source: detected_contract_name, operator: LIKE }
+    supported_term_categories: [costcenter]
     output_shape:
       type: detail
       columns: [GRANDPARENTREGIONNAME, REGIONNAME, SUBREGIONNAME, ENTITYDESCRIPTION, DIVISIONNAME, STATIONCODE, STATIONNAME, CUSTOMERNAME, SERVICETYPENAME, DEPARTMENTNAME, CONTRACTCODE, CONTRACTNAME, COSTCENTER]
